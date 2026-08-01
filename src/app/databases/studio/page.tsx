@@ -48,7 +48,8 @@ function StudioContent() {
     }
   };
 
-  const handleSelectTable = async (tableName: string) => {
+  const handleSelectTable = async (tableName: string | null) => {
+    if (!tableName) return;
     setSelectedTable(tableName);
     setIsLoading(true);
     setError(null);
