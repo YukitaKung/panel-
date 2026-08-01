@@ -261,8 +261,8 @@ export default function ApplicationsPage() {
                   <Settings className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
                   <DropdownMenuGroup>
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuItem>
                       <Play className="mr-2 h-4 w-4 text-emerald-500" />
                       Start
