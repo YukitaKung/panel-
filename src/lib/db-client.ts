@@ -17,7 +17,8 @@ export async function getMysqlConnection(dbName: string) {
       database: dbName,
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0
+      queueLimit: 0,
+      dateStrings: true
     });
   }
   return mysqlPools[dbName];
