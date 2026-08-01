@@ -2,20 +2,52 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 
+// The restricted base directory for all web files
+const BASE_DIR = process.platform === "win32" ? "C:\\var\\www" : "/var/www";
+
+function getSafePath(requestedPath: string) {
+  // Remove leading slash so it resolves inside BASE_DIR
+  const normalized = requestedPath.replace(/^[\/\\]+/, "");
+  const resolved = path.resolve(BASE_DIR, normalized);
+  if (!resolved.startsWith(BASE_DIR)) {
+    throw new Error("Access Denied: Path is outside the allowed directory.");
+  }
+  return resolved;
+}
+
+function toVirtualPath(realPath: string) {
+  if (realPath === BASE_DIR) return "/";
+  // Extract the part after BASE_DIR
+  let virtual = realPath.substring(BASE_DIR.length);
+  // Replace windows backslashes with forward slashes for UI consistency
+  virtual = virtual.replace(/\\/g, "/");
+  if (!virtual.startsWith("/")) virtual = "/" + virtual;
+  return virtual;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const dirPath = searchParams.get("path") || "/";
+  const virtualPath = searchParams.get("path") || "/";
 
   try {
-    const items = await fs.readdir(dirPath, { withFileTypes: true });
+    const realDirPath = getSafePath(virtualPath);
+    
+    // Ensure BASE_DIR exists
+    try {
+      await fs.access(BASE_DIR);
+    } catch {
+      await fs.mkdir(BASE_DIR, { recursive: true });
+    }
+
+    const items = await fs.readdir(realDirPath, { withFileTypes: true });
     const formattedItems = await Promise.all(
       items.map(async (item) => {
-        const fullPath = path.join(dirPath, item.name);
+        const fullRealPath = path.join(realDirPath, item.name);
         try {
-          const stats = await fs.stat(fullPath);
+          const stats = await fs.stat(fullRealPath);
           return {
             name: item.name,
-            path: fullPath,
+            path: toVirtualPath(fullRealPath),
             isDirectory: item.isDirectory(),
             size: stats.size,
             lastModified: stats.mtime.toISOString(),
@@ -50,15 +82,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing basePath or name" }, { status: 400 });
     }
 
-    const fullPath = path.join(basePath, name);
-
-    if (isDirectory) {
-      await fs.mkdir(fullPath, { recursive: true });
-    } else {
-      await fs.writeFile(fullPath, "", "utf-8"); // Empty file
+    const realBasePath = getSafePath(basePath);
+    const fullRealPath = path.join(realBasePath, name);
+    
+    // Extra security check
+    if (!fullRealPath.startsWith(BASE_DIR)) {
+      throw new Error("Access Denied");
     }
 
-    return NextResponse.json({ success: true, path: fullPath });
+    if (isDirectory) {
+      await fs.mkdir(fullRealPath, { recursive: true });
+    } else {
+      await fs.writeFile(fullRealPath, "", "utf-8"); // Empty file
+    }
+
+    return NextResponse.json({ success: true, path: toVirtualPath(fullRealPath) });
   } catch (error: any) {
     console.error("Error creating file/folder:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -69,10 +107,11 @@ export async function DELETE(request: Request) {
   try {
     const { targetPath } = await request.json();
     if (!targetPath || targetPath === "/") {
-      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+      return NextResponse.json({ error: "Cannot delete root directory" }, { status: 400 });
     }
 
-    await fs.rm(targetPath, { recursive: true, force: true });
+    const realTargetPath = getSafePath(targetPath);
+    await fs.rm(realTargetPath, { recursive: true, force: true });
     
     return NextResponse.json({ success: true });
   } catch (error: any) {
