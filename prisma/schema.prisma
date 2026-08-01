@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Application {
+  id        String   @id @default(uuid())
+  name      String
+  repo      String
+  branch    String
+  port      Int
+  status    String   @default("stopped") // running, stopped, error
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subdomain {
+  id        String   @id @default(uuid())
+  domain    String   @unique
+  target    String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DnsRecord {
+  id        String   @id @default(uuid())
+  domain    String
+  type      String   // A, AAAA, CNAME, TXT, MX
+  name      String
+  content   String
+  ttl       Int      @default(3600)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CronJob {
+  id        String   @id @default(uuid())
+  name      String
+  command   String
+  schedule  String
+  status    String   @default("active")
+  lastRun   DateTime?
+  nextRun   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
