@@ -43,7 +43,7 @@ export default function ApplicationsPage() {
     branch: "main",
     path: "",
     startScript: "npm start",
-    port: "3000"
+    port: "3001"
   });
 
   useEffect(() => {
@@ -106,6 +106,7 @@ export default function ApplicationsPage() {
           }
         }
         
+        setFormData({ name: "", repo: "", branch: "main", path: "", startScript: "npm start", port: "3001" });
         fetchApplications();
       }
     } catch (error) {
@@ -265,7 +266,7 @@ export default function ApplicationsPage() {
                         id="port" 
                         type="number"
                         className="h-11 text-base"
-                        placeholder="3000"
+                        placeholder="3001"
                         value={formData.port}
                         onChange={(e) => setFormData({...formData, port: e.target.value})}
                         required

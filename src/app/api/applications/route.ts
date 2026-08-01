@@ -39,6 +39,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid port number" }, { status: 400 });
     }
 
+    const reservedPorts = [22, 80, 443, 3000, 3306, 5432, 27017, 6379, 11211, 27017, 8080];
+    if (reservedPorts.includes(parsedPort)) {
+      return NextResponse.json({ error: `Port ${parsedPort} is reserved by the system and cannot be used.` }, { status: 400 });
+    }
+
     const existingApp = await db.application.findFirst({
       where: { port: parsedPort }
     });
