@@ -9,6 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 
 interface DBItem {
@@ -30,6 +32,7 @@ export default function DatabasesPage() {
   const [newDbName, setNewDbName] = useState("");
   const [newDbUser, setNewDbUser] = useState("");
   const [newDbPassword, setNewDbPassword] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const fetchDatabases = async (type: "mysql" | "postgres") => {
     setIsLoading(true);
@@ -61,7 +64,7 @@ export default function DatabasesPage() {
 
   const handleCreate = async () => {
     if (!newDbName || !newDbUser || !newDbPassword) {
-      alert("Please fill all fields");
+      toast.error("Please fill all fields");
       return;
     }
 
@@ -80,17 +83,16 @@ export default function DatabasesPage() {
       setNewDbName("");
       setNewDbUser("");
       setNewDbPassword("");
+      toast.success(`Database ${newDbName} created successfully`);
       fetchDatabases(activeTab);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setIsCreating(false);
     }
   };
 
   const handleDelete = async (dbName: string) => {
-    if (!confirm(`Are you sure you want to delete database '${dbName}' and its user? This is irreversible!`)) return;
-    
     try {
       const res = await fetch(`/api/databases/${activeTab}`, {
         method: "DELETE",
@@ -101,9 +103,10 @@ export default function DatabasesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete");
       
+      toast.success(`Database ${dbName} deleted`);
       fetchDatabases(activeTab);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -111,6 +114,13 @@ export default function DatabasesPage() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog 
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+        title="Delete Database"
+        description={`Are you sure you want to delete database '${confirmDelete}' and its user? This is irreversible!`}
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Databases</h1>
@@ -200,7 +210,7 @@ export default function DatabasesPage() {
   );
 }
 
-function DBTable({ isLoading, databases, onDelete, type }: { isLoading: boolean, databases: DBItem[], onDelete: (name: string) => void, type: string }) {
+function DBTable({ isLoading, databases, onDelete, type }: { isLoading: boolean, databases: DBItem[], onDelete: (name: string) => void, type: "mysql" | "postgres" }) {
   return (
     <Card className="flex flex-col relative min-h-[400px]">
       {isLoading && (
@@ -234,17 +244,18 @@ function DBTable({ isLoading, databases, onDelete, type }: { isLoading: boolean,
               </TableCell>
               <TableCell>{db.user}</TableCell>
               <TableCell>{db.sizeMb.toFixed(2)} MB</TableCell>
-              <TableCell className="text-right flex items-center justify-end space-x-2">
-                <Link href={`/databases/studio?type=${type.toLowerCase().includes("mysql") ? "mysql" : "postgres"}&db=${db.name}`}>
-                  <Button variant="outline" size="sm">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Studio
+              <TableCell className="text-right">
+                <div className="flex items-center justify-end space-x-2">
+                  <Link href={`/databases/studio?type=${type}&db=${db.name}`}>
+                    <Button variant="outline" size="sm">
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Studio
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(db.name)}>
+                    <Trash2 className="w-4 h-4" />
                   </Button>
-                </Link>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(db.name)}>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

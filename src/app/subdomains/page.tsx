@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +25,7 @@ export default function SubdomainsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   
   const [newDomain, setNewDomain] = useState("");
   const [newType, setNewType] = useState<"php" | "node">("php");
@@ -73,16 +76,16 @@ export default function SubdomainsPage() {
       setNewPort("");
       setNewType("php");
       fetchSubdomains();
+      toast.success(`Subdomain ${newDomain} created successfully!`);
     } catch (e: any) {
       setError(e.message);
+      toast.error(e.message);
     } finally {
       setIsCreating(false);
     }
   };
 
   const handleDelete = async (domain: string) => {
-    if (!confirm(`Are you sure you want to delete routing for ${domain}?\nThe files in /var/www/${domain} will NOT be deleted.`)) return;
-    
     try {
       const res = await fetch(`/api/subdomains?domain=${encodeURIComponent(domain)}`, {
         method: "DELETE",
@@ -91,14 +94,22 @@ export default function SubdomainsPage() {
         const data = await res.json();
         throw new Error(data.error || "Failed to delete");
       }
+      toast.success(`Deleted routing for ${domain}`);
       fetchSubdomains();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog 
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+        title="Delete Subdomain"
+        description={`Are you sure you want to delete routing for ${confirmDelete}? The files in /var/www/${confirmDelete} will NOT be deleted.`}
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Subdomains & Routing</h1>
@@ -242,9 +253,13 @@ export default function SubdomainsPage() {
                     {sub.type === "php" ? `/var/www/${sub.domain}` : `127.0.0.1:${sub.port}`}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(sub.domain)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => setConfirmDelete(sub.domain)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                   </TableCell>
                 </TableRow>
               ))}

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 function StudioContent() {
   const searchParams = useSearchParams();
@@ -78,7 +79,7 @@ function StudioContent() {
     if (!file || !dbName) return;
 
     if (!file.name.endsWith(".sql")) {
-      alert("Please upload a valid .sql file.");
+      toast.error("Please upload a valid .sql file.");
       return;
     }
 
@@ -100,9 +101,11 @@ function StudioContent() {
       if (!res.ok) throw new Error(d.error || "Upload failed");
       
       setUploadMessage("SQL file executed successfully!");
+      toast.success("SQL file executed successfully!");
       fetchTables(); // Refresh tables after upload
     } catch (e: any) {
       setError(e.message);
+      toast.error(e.message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -135,8 +138,10 @@ function StudioContent() {
       setData({ ...data, rows: newRows });
       setEditingRowIndex(null);
       setUploadMessage("Row updated successfully.");
+      toast.success("Row updated successfully");
     } catch (e: any) {
       setError(e.message);
+      toast.error(e.message);
     } finally {
       setIsSaving(false);
     }

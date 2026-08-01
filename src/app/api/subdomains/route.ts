@@ -49,7 +49,8 @@ export async function POST(request: Request) {
     if (type === "php") {
       // Create web root
       await execAsync(`sudo mkdir -p /var/www/${domain}`);
-      await execAsync(`sudo chown -R www-data:www-data /var/www/${domain}`);
+      await execAsync(`sudo chown -R okkcom269gmailcom:www-data /var/www/${domain}`);
+      await execAsync(`sudo chmod -R 775 /var/www/${domain}`);
       
       // We assume php8.3-fpm as installed in setup
       nginxConfig = `

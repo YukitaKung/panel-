@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LayoutWrapper } from "@/components/layout-wrapper";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const lineSeed = localFont({
@@ -42,6 +43,7 @@ export default function RootLayout({
           <LayoutWrapper>
             {children}
           </LayoutWrapper>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

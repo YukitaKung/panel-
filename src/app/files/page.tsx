@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "sonner";
 import { FileEditor } from "@/components/file-editor";
 
 interface FileItem {
@@ -41,6 +43,7 @@ export default function FilesPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createType, setCreateType] = useState<"file" | "folder">("file");
   const [newName, setNewName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const fetchFiles = async (path: string) => {
     setIsLoading(true);
@@ -88,14 +91,14 @@ export default function FilesPage() {
       }
       setIsCreateDialogOpen(false);
       setNewName("");
+      toast.success(`${createType === "folder" ? "Folder" : "File"} created successfully`);
       fetchFiles(currentPath); // Refresh
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
   const handleDelete = async (path: string) => {
-    if (!confirm(`Are you sure you want to delete ${path}? This action cannot be undone.`)) return;
     try {
       const res = await fetch("/api/files", {
         method: "DELETE",
@@ -106,9 +109,10 @@ export default function FilesPage() {
         const data = await res.json();
         throw new Error(data.error || "Failed to delete");
       }
+      toast.success("Deleted successfully");
       fetchFiles(currentPath);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -123,7 +127,7 @@ export default function FilesPage() {
       const data = await res.json();
       setEditingFile({ path: file.path, content: data.content });
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -173,6 +177,13 @@ export default function FilesPage() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog 
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+        title="Delete File / Folder"
+        description={`Are you sure you want to delete ${confirmDelete}? This action cannot be undone.`}
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">File Manager</h1>
@@ -292,15 +303,7 @@ export default function FilesPage() {
                       {format(new Date(file.lastModified), "MMM d, yyyy HH:mm")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(file.path);
-                        }}
-                      >
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setConfirmDelete(file.path); }}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </TableCell>

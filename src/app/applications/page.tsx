@@ -19,6 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -27,6 +29,7 @@ export default function ApplicationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [sourceType, setSourceType] = useState<"git" | "local">("git");
   
   const [formData, setFormData] = useState({
@@ -70,31 +73,40 @@ export default function ApplicationsPage() {
       if (res.ok) {
         setIsDialogOpen(false);
         setFormData({ name: "", repo: "", branch: "main", path: "", startScript: "npm start", port: "3000" });
+        toast.success("Application created successfully");
         fetchApplications();
       } else {
         const err = await res.json();
-        alert(err.error);
+        toast.error(err.error || "Failed to create application");
       }
     } catch (error) {
       console.error("Failed to create application:", error);
-      alert("Failed to create application.");
+      toast.error("Failed to create application.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this application? PM2 process will be stopped.")) return;
     try {
       await fetch(`/api/applications/${id}`, { method: "DELETE" });
+      toast.success("Application deleted");
       fetchApplications();
     } catch (error) {
       console.error("Failed to delete application:", error);
+      toast.error("Failed to delete application");
     }
   };
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog 
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+        title="Delete Application"
+        description="Are you sure you want to delete this application? The PM2 process will be stopped."
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">แอพพลิเคชั่น (Applications)</h1>
@@ -268,9 +280,9 @@ export default function ApplicationsPage() {
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(app.id)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete App
+                  <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => setConfirmDelete(app.id)}>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Application
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
