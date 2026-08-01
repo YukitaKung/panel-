@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AppWindow, Database, FileCode2, Globe, HardDrive, Settings, SquareTerminal, Server, FolderCode, Clock, Network, Users, Terminal } from "lucide-react";
+import { Activity, AppWindow, Database, FileCode2, Globe, HardDrive, Settings, SquareTerminal, Server, FolderCode, Clock, Network, Users, Terminal, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -110,6 +110,18 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={() => window.location.href = "/api/auth/logout"} className="text-destructive hover:text-destructive">
+                  <LogOut />
+                  <span>ออกจากระบบ (Logout)</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
