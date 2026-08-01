@@ -34,6 +34,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Application path is required for Local deployment" }, { status: 400 });
     }
 
+    const parsedPort = parseInt(port, 10);
+    if (isNaN(parsedPort) || parsedPort <= 0 || parsedPort > 65535) {
+      return NextResponse.json({ error: "Invalid port number" }, { status: 400 });
+    }
+
+    const existingApp = await db.application.findFirst({
+      where: { port: parsedPort }
+    });
+
+    if (existingApp) {
+      return NextResponse.json({ error: `Port ${parsedPort} is already in use by application "${existingApp.name}"` }, { status: 400 });
+    }
+
     // 1. Create DB Record
     const app = await db.application.create({
       data: {
@@ -87,7 +100,7 @@ export async function POST(req: Request) {
 
         // 4. Start with PM2 using the custom startScript
         // We run pm2 as root or the current user. Since we might need sudo for ports/paths:
-        const pm2Cmd = `cd ${targetDir} && pm2 start "${startScript}" --name "app-${app.id}"`;
+        const pm2Cmd = `cd ${targetDir} && PORT=${app.port} pm2 start "${startScript}" --name "app-${app.id}"`;
         await execAsync(pm2Cmd);
         await execAsync("pm2 save");
 

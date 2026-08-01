@@ -30,6 +30,30 @@ export async function DELETE(
     // 3. Delete DB Record
     await db.application.delete({ where: { id } });
 
+    // 4. Auto-cleanup subdomains connected to this app
+    try {
+      const dataFile = path.join(process.cwd(), "data", "subdomains.json");
+      const data = await require("fs/promises").readFile(dataFile, "utf8");
+      let subdomains = JSON.parse(data);
+      
+      const targetStr = `http://127.0.0.1:${app.port}`;
+      const toDelete = subdomains.filter((s: any) => s.target === targetStr);
+      
+      if (toDelete.length > 0) {
+        subdomains = subdomains.filter((s: any) => s.target !== targetStr);
+        await require("fs/promises").writeFile(dataFile, JSON.stringify(subdomains, null, 2));
+        
+        // Remove nginx configs
+        for (const sub of toDelete) {
+          await execAsync(`sudo rm -f /etc/nginx/sites-enabled/${sub.domain}`).catch(() => {});
+          await execAsync(`sudo rm -f /etc/nginx/sites-available/${sub.domain}`).catch(() => {});
+        }
+        await execAsync(`sudo systemctl reload nginx`).catch(() => {});
+      }
+    } catch (e) {
+      console.error("Failed to cleanup subdomains:", e);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete application" }, { status: 500 });
