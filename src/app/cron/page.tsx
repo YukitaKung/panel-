@@ -108,7 +108,7 @@ export default function CronPage() {
                         <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10" title="Run Now" />}>
                           <PlayCircle className="h-4 w-4" />
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-[600px]">
                           <DialogHeader>
                             <DialogTitle>Run Cron Job</DialogTitle>
                             <DialogDescription>
@@ -177,7 +177,7 @@ export default function CronPage() {
                         <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" />}>
                           <Trash2 className="h-4 w-4" />
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-[600px]">
                           <DialogHeader>
                             <DialogTitle className="text-destructive">Delete Cron Job</DialogTitle>
                             <DialogDescription>

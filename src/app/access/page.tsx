@@ -27,7 +27,7 @@ export default function AccessPage() {
           <DialogTrigger render={<Button />}>
             <Plus className="mr-2 h-4 w-4" /> สร้างบัญชีใหม่ (Create Account)
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px] md:max-w-[700px]">
             <DialogHeader>
               <DialogTitle>สร้างบัญชี (Create Account)</DialogTitle>
               <DialogDescription>Add a new system user for SSH or FTP access.</DialogDescription>
@@ -115,7 +115,7 @@ export default function AccessPage() {
                         <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Change Password" />}>
                           <Key className="h-4 w-4" />
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-[600px]">
                           <DialogHeader>
                             <DialogTitle>Change Password</DialogTitle>
                             <DialogDescription>
@@ -139,7 +139,7 @@ export default function AccessPage() {
                         <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete Account" />}>
                           <Trash2 className="h-4 w-4" />
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-[600px]">
                           <DialogHeader>
                             <DialogTitle className="text-destructive">Delete Account</DialogTitle>
                             <DialogDescription>

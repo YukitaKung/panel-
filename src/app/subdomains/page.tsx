@@ -117,7 +117,7 @@ export default function SubdomainsPage() {
                 New Subdomain
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[600px] md:max-w-[700px]">
               <DialogHeader>
                 <DialogTitle>Create Subdomain / Domain</DialogTitle>
                 <DialogDescription>
@@ -137,6 +137,7 @@ export default function SubdomainsPage() {
                   <Label htmlFor="domain">Domain or Subdomain Name</Label>
                   <Input 
                     id="domain" 
+                    className="h-11 text-base"
                     placeholder="e.g. blog.mydomain.com" 
                     value={newDomain}
                     onChange={(e) => setNewDomain(e.target.value)}
@@ -146,19 +147,19 @@ export default function SubdomainsPage() {
                 <div className="grid gap-2">
                   <Label>Routing Type</Label>
                   <Select value={newType} onValueChange={(val: "php" | "node" | null) => val && setNewType(val)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 text-base">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="php">
+                      <SelectItem value="php" className="py-3 text-base">
                         <div className="flex items-center">
-                          <FolderCode className="w-4 h-4 mr-2 text-blue-500" />
+                          <FolderCode className="w-5 h-5 mr-3 text-blue-500" />
                           Static / PHP (Folder)
                         </div>
                       </SelectItem>
-                      <SelectItem value="node">
+                      <SelectItem value="node" className="py-3 text-base">
                         <div className="flex items-center">
-                          <Server className="w-4 h-4 mr-2 text-green-500" />
+                          <Server className="w-5 h-5 mr-3 text-green-500" />
                           Node.js (Reverse Proxy)
                         </div>
                       </SelectItem>
@@ -176,6 +177,7 @@ export default function SubdomainsPage() {
                     <Input 
                       id="port" 
                       type="number"
+                      className="h-11 text-base"
                       placeholder="e.g. 3000" 
                       value={newPort}
                       onChange={(e) => setNewPort(e.target.value)}

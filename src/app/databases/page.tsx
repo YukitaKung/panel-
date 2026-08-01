@@ -164,7 +164,7 @@ export default function DatabasesPage() {
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Create {activeTab === "mysql" ? "MySQL" : "PostgreSQL"} Database</DialogTitle>
             <DialogDescription>
