@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Globe, Plus, Trash2, Server, FolderCode, ExternalLink, RefreshCw, AlertCircle } from "lucide-react";
+import { Globe, Plus, Trash2, Server, FolderCode, ExternalLink, RefreshCw, AlertCircle, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,10 +27,29 @@ export default function SubdomainsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   
+  const [isEditMode, setIsEditMode] = useState(false);
   const [newDomain, setNewDomain] = useState("");
   const [newType, setNewType] = useState<"php" | "node">("php");
   const [newPort, setNewPort] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const openCreateDialog = () => {
+    setIsEditMode(false);
+    setNewDomain("");
+    setNewType("php");
+    setNewPort("");
+    setError(null);
+    setIsDialogOpen(true);
+  };
+
+  const openEditDialog = (sub: Subdomain) => {
+    setIsEditMode(true);
+    setNewDomain(sub.domain);
+    setNewType(sub.type);
+    setNewPort(sub.port || "");
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const fetchSubdomains = async () => {
     setIsLoading(true);
@@ -63,20 +82,17 @@ export default function SubdomainsPage() {
     setIsCreating(true);
     try {
       const res = await fetch("/api/subdomains", {
-        method: "POST",
+        method: isEditMode ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ domain: newDomain, type: newType, port: newPort }),
       });
       const data = await res.json();
       
-      if (!res.ok) throw new Error(data.error || "Failed to create subdomain");
+      if (!res.ok) throw new Error(data.error || `Failed to ${isEditMode ? "update" : "create"} subdomain`);
       
       setIsDialogOpen(false);
-      setNewDomain("");
-      setNewPort("");
-      setNewType("php");
       fetchSubdomains();
-      toast.success(`Subdomain ${newDomain} created successfully!`);
+      toast.success(`Subdomain ${newDomain} ${isEditMode ? "updated" : "created"} successfully!`);
     } catch (e: any) {
       setError(e.message);
       toast.error(e.message);
@@ -123,14 +139,14 @@ export default function SubdomainsPage() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             {/* @ts-ignore */}
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={openCreateDialog}>
                 <Plus className="w-4 h-4 mr-2" />
                 New Subdomain
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] md:max-w-[700px]">
               <DialogHeader>
-                <DialogTitle>Create Subdomain / Domain</DialogTitle>
+                <DialogTitle>{isEditMode ? "Edit Subdomain" : "Create Subdomain / Domain"}</DialogTitle>
                 <DialogDescription>
                   Configure how Nginx should route traffic for this domain.
                 </DialogDescription>
@@ -152,6 +168,7 @@ export default function SubdomainsPage() {
                     placeholder="e.g. blog.mydomain.com" 
                     value={newDomain}
                     onChange={(e) => setNewDomain(e.target.value)}
+                    disabled={isEditMode}
                   />
                 </div>
                 
@@ -204,7 +221,7 @@ export default function SubdomainsPage() {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isCreating}>Cancel</Button>
                 <Button onClick={handleCreate} disabled={isCreating}>
                   {isCreating ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Create & Reload Nginx
+                  {isEditMode ? "Save & Reload Nginx" : "Create & Reload Nginx"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -252,7 +269,14 @@ export default function SubdomainsPage() {
                   <TableCell className="text-sm font-mono text-muted-foreground">
                     {sub.type === "php" ? `/var/www/${sub.domain}` : `127.0.0.1:${sub.port}`}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => openEditDialog(sub)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
                       <Button 
                         variant="destructive" 
                         size="sm"

@@ -129,6 +129,100 @@ server {
   }
 }
 
+export async function PUT(request: Request) {
+  try {
+    const { domain, type, port } = await request.json();
+
+    if (!domain || !isValidDomain(domain)) {
+      return NextResponse.json({ error: "Invalid domain name" }, { status: 400 });
+    }
+    if (type !== "php" && type !== "node") {
+      return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+    }
+
+    const subdomains = await getSubdomains();
+    const existingIndex = subdomains.findIndex((s: any) => s.domain === domain);
+    
+    if (existingIndex === -1) {
+      return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+    }
+
+    let nginxConfig = "";
+
+    if (type === "php") {
+      // Create web root
+      await execAsync(`sudo mkdir -p /var/www/${domain}`);
+      await execAsync(`sudo chown -R okkcom269gmailcom:www-data /var/www/${domain}`);
+      await execAsync(`sudo chmod -R 775 /var/www/${domain}`);
+      
+      nginxConfig = `
+server {
+    listen 80;
+    server_name ${domain};
+    root /var/www/${domain};
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \\.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+    }
+}
+`;
+    } else if (type === "node") {
+      const targetPort = parseInt(port, 10);
+      if (!targetPort || targetPort < 1 || targetPort > 65535) {
+        return NextResponse.json({ error: "Invalid port" }, { status: 400 });
+      }
+
+      nginxConfig = `
+server {
+    listen 80;
+    server_name ${domain};
+
+    location / {
+        proxy_pass http://127.0.0.1:${targetPort};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+`;
+    }
+
+    const tempFile = path.join(process.cwd(), "data", `${domain}.conf`);
+    await fs.writeFile(tempFile, nginxConfig);
+    
+    await execAsync(`sudo mv ${tempFile} /etc/nginx/sites-available/${domain}`);
+    await execAsync(`sudo ln -sf /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/`);
+    
+    try {
+      await execAsync(`sudo nginx -t`);
+      await execAsync(`sudo systemctl reload nginx`);
+    } catch (nginxError: any) {
+      return NextResponse.json({ error: "Nginx Configuration Error: " + nginxError.message }, { status: 500 });
+    }
+
+    subdomains[existingIndex] = {
+      ...subdomains[existingIndex],
+      type,
+      port: type === "node" ? port : null,
+    };
+    await saveSubdomains(subdomains);
+
+    return NextResponse.json({ success: true, subdomain: subdomains[existingIndex] });
+
+  } catch (error: any) {
+    console.error("Subdomain update error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
