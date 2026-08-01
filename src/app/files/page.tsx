@@ -1,163 +1,351 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect, useMemo } from "react";
+import { format } from "date-fns";
 import { 
-  Folder, File, FileText, FileImage, FileCode2, FileArchive,
-  Upload, Download, Plus, Trash2, Edit2, Copy, Scissors, ArrowLeft, MoreVertical
+  Folder, File, FileText, FileCode2, FileImage, 
+  Trash2, ChevronRight, Home, RefreshCw, Plus, FilePlus, FolderPlus
 } from "lucide-react";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { FileEditor } from "@/components/file-editor";
 
-const files = [
-  { id: 1, name: "api.company.com", type: "folder", size: "--", modified: "Oct 24, 2024" },
-  { id: 2, name: "dashboard.company.com", type: "folder", size: "--", modified: "Oct 20, 2024" },
-  { id: 3, name: "logs", type: "folder", size: "--", modified: "Oct 25, 2024" },
-  { id: 4, name: "nginx.conf", type: "code", size: "4.2 KB", modified: "Sep 10, 2024" },
-  { id: 5, name: "server_backup.zip", type: "archive", size: "4.2 GB", modified: "Oct 25, 2024" },
-  { id: 6, name: "logo.png", type: "image", size: "128 KB", modified: "Aug 15, 2024" },
-  { id: 7, name: "readme.txt", type: "text", size: "1.1 KB", modified: "Jan 1, 2024" },
-];
+interface FileItem {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  lastModified: string;
+}
 
-const getFileIcon = (type: string) => {
-  switch (type) {
-    case "folder": return <Folder className="h-5 w-5 text-blue-400 fill-blue-400/20" />;
-    case "code": return <FileCode2 className="h-5 w-5 text-orange-400" />;
-    case "archive": return <FileArchive className="h-5 w-5 text-red-400" />;
-    case "image": return <FileImage className="h-5 w-5 text-emerald-400" />;
-    case "text": return <FileText className="h-5 w-5 text-muted-foreground" />;
-    default: return <File className="h-5 w-5 text-muted-foreground" />;
-  }
-};
+export default function FilesPage() {
+  const [currentPath, setCurrentPath] = useState("/");
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default function FileManagerPage() {
+  // Editor State
+  const [editingFile, setEditingFile] = useState<{ path: string; content: string } | null>(null);
+
+  // Dialogs State
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [createType, setCreateType] = useState<"file" | "folder">("file");
+  const [newName, setNewName] = useState("");
+
+  const fetchFiles = async (path: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to fetch files");
+      }
+      const data = await res.json();
+      setFiles(data);
+      setCurrentPath(path);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFiles(currentPath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleNavigate = (path: string) => {
+    fetchFiles(path);
+  };
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    try {
+      const res = await fetch("/api/files", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          basePath: currentPath,
+          name: newName,
+          isDirectory: createType === "folder",
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create");
+      }
+      setIsCreateDialogOpen(false);
+      setNewName("");
+      fetchFiles(currentPath); // Refresh
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleDelete = async (path: string) => {
+    if (!confirm(`Are you sure you want to delete ${path}? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch("/api/files", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetPath: path }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete");
+      }
+      fetchFiles(currentPath);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleOpenFile = async (file: FileItem) => {
+    if (file.isDirectory) return;
+    try {
+      const res = await fetch(`/api/files/content?path=${encodeURIComponent(file.path)}`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to read file");
+      }
+      const data = await res.json();
+      setEditingFile({ path: file.path, content: data.content });
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleSaveFile = async (path: string, content: string) => {
+    const res = await fetch("/api/files/content", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, content }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Failed to save file");
+    }
+  };
+
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  };
+
+  const getFileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (["js", "ts", "jsx", "tsx", "json", "html", "css", "php", "py", "sh"].includes(ext || "")) return <FileCode2 className="w-5 h-5 text-blue-500" />;
+    if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext || "")) return <FileImage className="w-5 h-5 text-purple-500" />;
+    if (["txt", "md", "csv", "log"].includes(ext || "")) return <FileText className="w-5 h-5 text-green-500" />;
+    return <File className="w-5 h-5 text-muted-foreground" />;
+  };
+
+  // Breadcrumbs logic
+  const breadcrumbs = useMemo(() => {
+    if (currentPath === "/") return [{ name: "/", path: "/" }];
+    
+    const parts = currentPath.split("/").filter(Boolean);
+    const crumbs = [{ name: "root", path: "/" }];
+    
+    let builtPath = "";
+    parts.forEach(part => {
+      builtPath += `/${part}`;
+      crumbs.push({ name: part, path: builtPath });
+    });
+    return crumbs;
+  }, [currentPath]);
+
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">File Manager</h1>
+          <p className="text-muted-foreground">Manage and edit your server files directly.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Plus className="h-4 w-4 mr-2" />
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={() => fetchFiles(currentPath)}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => { setCreateType("folder"); setIsCreateDialogOpen(true); }}
+          >
+            <FolderPlus className="w-4 h-4 mr-2" />
             New Folder
           </Button>
-          <Button size="sm">
-            <Upload className="h-4 w-4 mr-2" />
-            Upload
+          <Button 
+            onClick={() => { setCreateType("file"); setIsCreateDialogOpen(true); }}
+          >
+            <FilePlus className="w-4 h-4 mr-2" />
+            New File
           </Button>
         </div>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="py-3 px-4 border-b bg-muted/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                <ArrowLeft className="h-4 w-4" />
+      <Card className="flex flex-col">
+        {/* Toolbar / Breadcrumbs */}
+        <div className="flex items-center space-x-1 p-3 border-b bg-muted/20 overflow-x-auto">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleNavigate("/")}>
+            <Home className="w-4 h-4" />
+          </Button>
+          {breadcrumbs.map((crumb, idx) => (
+            <React.Fragment key={crumb.path}>
+              {idx > 0 && <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={`h-8 px-2 shrink-0 ${idx === breadcrumbs.length - 1 ? "font-bold" : ""}`}
+                onClick={() => handleNavigate(crumb.path)}
+              >
+                {crumb.name}
               </Button>
-              <div className="flex items-center gap-2 px-2 text-muted-foreground">
-                <span className="hover:text-foreground cursor-pointer">/</span>
-                <span>var</span>
-                <span className="hover:text-foreground cursor-pointer">/</span>
-                <span>www</span>
-              </div>
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* File Table */}
+        <div className="relative min-h-[400px]">
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10 backdrop-blur-sm">
+              <RefreshCw className="w-8 h-8 animate-spin text-primary" />
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <Scissors className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-500 hover:bg-rose-500/10">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+          )}
+          
+          {error && (
+            <div className="p-8 text-center text-destructive">
+              <p className="text-lg font-semibold">Error Loading Directory</p>
+              <p className="text-sm mt-2">{error}</p>
+              <Button className="mt-4" variant="outline" onClick={() => fetchFiles(currentPath)}>Retry</Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 p-0 overflow-hidden">
-          <ScrollArea className="h-full">
+          )}
+
+          {!error && (
             <Table>
-              <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-12 pl-4">
-                    <Checkbox />
-                  </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="w-24">Size</TableHead>
-                  <TableHead className="w-40">Modified</TableHead>
-                  <TableHead className="w-16"></TableHead>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[400px]">Name</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Last Modified</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Up Directory Button */}
+                {currentPath !== "/" && (
+                  <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                    const parent = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
+                    handleNavigate(parent);
+                  }}>
+                    <TableCell className="font-medium flex items-center space-x-3">
+                      <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" />
+                      <span>..</span>
+                    </TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                )}
+
+                {files.length === 0 && !isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                      This folder is empty.
+                    </TableCell>
+                  </TableRow>
+                )}
+
                 {files.map((file) => (
-                  <TableRow key={file.id} className="group cursor-pointer">
-                    <TableCell className="pl-4">
-                      <Checkbox />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {getFileIcon(file.type)}
-                        <span className="font-medium group-hover:text-primary transition-colors">
-                          {file.name}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {file.size}
+                  <TableRow 
+                    key={file.path}
+                    className="cursor-pointer hover:bg-muted/50 group"
+                    onClick={() => file.isDirectory ? handleNavigate(file.path) : handleOpenFile(file)}
+                  >
+                    <TableCell className="font-medium flex items-center space-x-3">
+                      {file.isDirectory ? (
+                        <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" />
+                      ) : (
+                        getFileIcon(file.name)
+                      )}
+                      <span className="truncate max-w-[300px]">{file.name}</span>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {file.modified}
+                      {file.isDirectory ? "-" : formatBytes(file.size)}
                     </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity" />}>
-                          <span className="sr-only">Open menu</span>
-                          <MoreVertical className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          {file.type !== "folder" && (
-                            <DropdownMenuItem>
-                              <Download className="mr-2 h-4 w-4" /> Download
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem>
-                            <Edit2 className="mr-2 h-4 w-4" /> Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Copy className="mr-2 h-4 w-4" /> Copy
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Scissors className="mr-2 h-4 w-4" /> Move
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {file.type === "archive" && (
-                            <DropdownMenuItem>
-                              <FileArchive className="mr-2 h-4 w-4" /> Extract
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem className="text-rose-500 focus:bg-rose-500/10 focus:text-rose-500">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {format(new Date(file.lastModified), "MMM d, yyyy HH:mm")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(file.path);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </ScrollArea>
-        </CardContent>
+          )}
+        </div>
       </Card>
+
+      {/* Code Editor Modal */}
+      {editingFile && (
+        <FileEditor 
+          filePath={editingFile.path}
+          initialContent={editingFile.content}
+          onClose={() => setEditingFile(null)}
+          onSave={handleSaveFile}
+        />
+      )}
+
+      {/* Create Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New {createType === "folder" ? "Folder" : "File"}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Creating in: <span className="font-mono text-foreground">{currentPath}</span>
+            </p>
+            <Input
+              autoFocus
+              placeholder={`Enter ${createType} name...`}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
