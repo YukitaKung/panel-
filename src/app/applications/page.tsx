@@ -89,7 +89,7 @@ export default function ApplicationsPage() {
           <p className="text-muted-foreground mt-1">จัดการ Node.js Applications ของคุณ</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
+          <DialogTrigger render={<Button />}>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               สร้างแอพพลิเคชั่น (Create Application)
@@ -202,10 +202,8 @@ export default function ApplicationsPage() {
                       </Button>
                     )}
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                         <Button variant="outline" size="sm">
-                           <Settings className="h-4 w-4 mr-2" /> Manage
-                         </Button>
+                      <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+                         <Settings className="h-4 w-4 mr-2" /> Manage
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem className="text-rose-500 focus:bg-rose-500/10 focus:text-rose-500" onClick={() => handleDelete(app.id)}>
