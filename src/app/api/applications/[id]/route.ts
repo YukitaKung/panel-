@@ -20,8 +20,9 @@ export async function DELETE(
     }
 
     // 1. Stop and Delete PM2 process
-    await stopApp(app.name);
-    await deleteApp(app.name);
+    const pm2Name = `app-${app.id}`;
+    await stopApp(pm2Name).catch(() => {});
+    await deleteApp(pm2Name).catch(() => {});
 
     // 2. Remove files
     const appDir = path.join("/var/www/apps", app.id);
