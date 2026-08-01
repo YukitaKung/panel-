@@ -158,16 +158,16 @@ export default function DatabasesPage() {
           <DBTable 
             isLoading={isLoading} 
             databases={filteredDbs} 
-            onDelete={handleDelete}
-            type="MySQL"
+            onDelete={setConfirmDelete}
+            type="mysql"
           />
         </TabsContent>
         <TabsContent value="postgres" className="mt-0">
           <DBTable 
             isLoading={isLoading} 
             databases={filteredDbs} 
-            onDelete={handleDelete}
-            type="PostgreSQL"
+            onDelete={setConfirmDelete}
+            type="postgres"
           />
         </TabsContent>
       </Tabs>
