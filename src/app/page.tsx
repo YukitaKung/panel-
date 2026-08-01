@@ -1,20 +1,50 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Activity, Cpu, HardDrive, Network, MemoryStick, AppWindow, Globe, Play, Plus, RefreshCw } from "lucide-react";
+import { Activity, Cpu, HardDrive, Network, MemoryStick, AppWindow, Globe, Play, Plus, RefreshCw, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
+  const [stats, setStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch("/api/system/stats");
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch system stats:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    const interval = setInterval(fetchStats, 5000); // Refresh every 5s
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">ภาพรวม (Dashboard)</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={fetchStats} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
             รีเฟรช (Refresh)
-          </Button>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            สร้างแอพใหม่ (New App)
           </Button>
         </div>
       </div>
@@ -27,8 +57,10 @@ export default function Dashboard() {
             <Cpu className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12%</div>
-            <p className="text-xs text-muted-foreground">4 Cores, 2.4 GHz</p>
+            <div className="text-2xl font-bold">
+              {stats ? `${stats.cpuUsage.toFixed(1)}%` : "..."}
+            </div>
+            <p className="text-xs text-muted-foreground">Current Load</p>
           </CardContent>
         </Card>
         <Card>
@@ -37,34 +69,43 @@ export default function Dashboard() {
             <MemoryStick className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4.2 GB / 8 GB</div>
-            <p className="text-xs text-muted-foreground">52% Utilized</p>
+            <div className="text-2xl font-bold">
+              {stats ? `${formatBytes(stats.memoryUsed)}` : "..."}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              / {stats ? formatBytes(stats.memoryTotal) : "..."} Total
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Disk Space</CardTitle>
-            <HardDrive className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45 GB / 160 GB</div>
-            <p className="text-xs text-muted-foreground">NVMe Storage</p>
+            <div className="text-2xl font-bold">
+              {stats ? stats.uptime : "..."}
+            </div>
+            <p className="text-xs text-muted-foreground">Server Uptime</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Network</CardTitle>
+            <CardTitle className="text-sm font-medium">Network (Rx / Tx)</CardTitle>
             <Network className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">↑ 12 Mbps</div>
-            <p className="text-xs text-muted-foreground">↓ 8 Mbps</p>
+            <div className="text-2xl font-bold">
+              {stats ? `↓ ${formatBytes(stats.networkRx)}/s` : "..."}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats ? `↑ ${formatBytes(stats.networkTx)}/s` : "..."}
+            </p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Active Entities */}
         <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle>บริการที่กำลังทำงาน (Running Services)</CardTitle>
@@ -72,63 +113,26 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="bg-primary/10 p-2 rounded-md mr-4">
-                  <AppWindow className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium leading-none">api.company.com</p>
-                  <p className="text-sm text-muted-foreground">Node.js (PM2) • Port 3001</p>
-                </div>
-                <div className="flex items-center text-sm font-medium text-emerald-500">
-                  <Play className="h-4 w-4 mr-1" />
-                  Running
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="bg-primary/10 p-2 rounded-md mr-4">
-                  <Globe className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium leading-none">company.com</p>
-                  <p className="text-sm text-muted-foreground">PHP 8.2 • Nginx</p>
-                </div>
-                <div className="flex items-center text-sm font-medium text-emerald-500">
-                  <Play className="h-4 w-4 mr-1" />
-                  Running
-                </div>
+              <div className="flex items-center text-sm text-muted-foreground border border-dashed rounded-lg p-6 justify-center">
+                <AppWindow className="h-5 w-5 mr-2" /> 
+                <p>โปรดไปที่หน้า "แอพพลิเคชั่น" เพื่อดูข้อมูลแบบละเอียด</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Recent Activities */}
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Recent Activities</CardTitle>
-            <CardDescription>Latest events on your server.</CardDescription>
+            <CardTitle>กิจกรรมล่าสุด (Recent Activity)</CardTitle>
+            <CardDescription>System logs and recent events.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center">
-                <Activity className="h-4 w-4 text-muted-foreground mr-3 mt-0.5 self-start" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">Restarted api.company.com</p>
-                  <p className="text-xs text-muted-foreground">2 hours ago</p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <Activity className="h-4 w-4 text-muted-foreground mr-3 mt-0.5 self-start" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">Automated Backup Completed</p>
-                  <p className="text-xs text-muted-foreground">5 hours ago</p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <Activity className="h-4 w-4 text-muted-foreground mr-3 mt-0.5 self-start" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">Installed PHP 8.2</p>
-                  <p className="text-xs text-muted-foreground">1 day ago</p>
+                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 mr-3 self-start"></div>
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium leading-none">System Panel Started</p>
+                  <p className="text-xs text-muted-foreground">Just now</p>
                 </div>
               </div>
             </div>
