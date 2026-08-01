@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs/promises";
@@ -61,66 +61,94 @@ export async function POST(req: Request) {
       },
     });
 
-    // Asynchronous background deployment
-    (async () => {
-      try {
-        let targetDir = "";
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        function send(text: string) {
+          controller.enqueue(encoder.encode(text + "\\n"));
+        }
 
-        if (sourceType === "git") {
-          const appsDir = "/var/www/apps";
-          targetDir = path.join(appsDir, app.id);
-          
-          await execAsync(`sudo mkdir -p ${appsDir}`).catch(() => {});
-          await execAsync(`sudo chown -R okkcom269gmailcom:www-data ${appsDir}`).catch(() => {});
-          await execAsync(`sudo chmod -R 775 ${appsDir}`).catch(() => {});
-          
-          // Clean directory if exists
-          await execAsync(`sudo rm -rf ${targetDir}`).catch(() => {});
-          
-          // Clone repo
-          await execAsync(`git clone -b ${app.branch} ${app.repo} ${targetDir}`);
-          
-          // Update DB with the cloned path so it acts like a local app now
+        function streamCommand(command: string): Promise<void> {
+          return new Promise((resolve, reject) => {
+            send(`$ ${command}`);
+            const child = spawn(command, { shell: true });
+            child.stdout.on("data", (data) => send(data.toString().trimEnd()));
+            child.stderr.on("data", (data) => send(data.toString().trimEnd()));
+            child.on("close", (code) => {
+              if (code === 0) resolve();
+              else reject(new Error(`Command failed with code ${code}`));
+            });
+          });
+        }
+
+        try {
+          send(`[INFO] Created application record: ${app.name} (${app.id})`);
+          let targetDir = "";
+
+          if (sourceType === "git") {
+            const appsDir = "/var/www/apps";
+            targetDir = path.join(appsDir, app.id);
+            
+            await execAsync(`sudo mkdir -p ${appsDir}`).catch(() => {});
+            await execAsync(`sudo chown -R okkcom269gmailcom:www-data ${appsDir}`).catch(() => {});
+            await execAsync(`sudo chmod -R 775 ${appsDir}`).catch(() => {});
+            await execAsync(`sudo rm -rf ${targetDir}`).catch(() => {});
+            
+            send(`[INFO] Cloning repository ${app.repo}...`);
+            await streamCommand(`git clone -b ${app.branch} ${app.repo} ${targetDir}`);
+            
+            await db.application.update({
+              where: { id: app.id },
+              data: { path: targetDir }
+            });
+          } else {
+            targetDir = appPath;
+            await fs.access(targetDir).catch(() => {
+              throw new Error(`Directory ${targetDir} does not exist on the server.`);
+            });
+            send(`[INFO] Using local path ${targetDir}`);
+          }
+
+          if (sourceType === "git" && await fs.stat(path.join(targetDir, "package.json")).catch(() => false)) {
+            send(`[INFO] Installing dependencies...`);
+            await streamCommand(`cd ${targetDir} && npm install`);
+            
+            send(`[INFO] Building application...`);
+            await streamCommand(`cd ${targetDir} && npm run build`).catch((err: any) => {
+              send(`[WARN] Build script failed or not present: ${err.message}`);
+            });
+          }
+
+          send(`[INFO] Starting PM2 process...`);
+          const pm2Cmd = `cd ${targetDir} && PORT=${app.port} pm2 start "${startScript}" --name "app-${app.id}"`;
+          await streamCommand(pm2Cmd);
+          await execAsync("pm2 save");
+
           await db.application.update({
             where: { id: app.id },
-            data: { path: targetDir }
+            data: { status: "running" },
           });
-        } else {
-          targetDir = appPath;
-          // Check if path exists
-          await fs.access(targetDir).catch(() => {
-            throw new Error(`Directory ${targetDir} does not exist on the server.`);
+
+          send(`\\n[SUCCESS] Deployment complete!`);
+          controller.close();
+        } catch (error: any) {
+          send(`\\n[ERROR] Deployment failed: ${error.message}`);
+          await db.application.update({
+            where: { id: app.id },
+            data: { status: "error" },
           });
+          controller.close();
         }
-
-        // Install dependencies if package.json exists and we cloned from git
-        // (If it's local, we assume the user might have already installed them, or we could run npm install anyway)
-        if (sourceType === "git" && await fs.stat(path.join(targetDir, "package.json")).catch(() => false)) {
-          await execAsync(`cd ${targetDir} && npm install`);
-          await execAsync(`cd ${targetDir} && npm run build`).catch(() => {}); // Optional build
-        }
-
-        // 4. Start with PM2 using the custom startScript
-        // We run pm2 as root or the current user. Since we might need sudo for ports/paths:
-        const pm2Cmd = `cd ${targetDir} && PORT=${app.port} pm2 start "${startScript}" --name "app-${app.id}"`;
-        await execAsync(pm2Cmd);
-        await execAsync("pm2 save");
-
-        // 5. Update Status
-        await db.application.update({
-          where: { id: app.id },
-          data: { status: "running" },
-        });
-      } catch (error: any) {
-        console.error("Deployment failed:", error);
-        await db.application.update({
-          where: { id: app.id },
-          data: { status: "error" },
-        });
       }
-    })();
+    });
 
-    return NextResponse.json(app, { status: 201 });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive"
+      }
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to create application" }, { status: 500 });
   }

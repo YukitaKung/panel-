@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   AppWindow, Play, Square, RotateCw, GitBranch,
-  Terminal, Settings, Trash2, Plus, Package, FolderCode, FileCode2
+  Terminal, Settings, Trash2, Plus, Package, FolderCode, FileCode2,
+  RefreshCw, Activity
 } from "lucide-react";
 import { 
   DropdownMenu,
@@ -29,6 +30,10 @@ export default function ApplicationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployLogs, setDeployLogs] = useState("");
+  const logsEndRef = useRef<HTMLDivElement>(null);
+  
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [sourceType, setSourceType] = useState<"git" | "local">("git");
   
@@ -40,6 +45,12 @@ export default function ApplicationsPage() {
     startScript: "npm start",
     port: "3000"
   });
+
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [deployLogs]);
 
   const fetchApplications = async () => {
     try {
@@ -64,20 +75,38 @@ export default function ApplicationsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setIsDeploying(true);
+    setDeployLogs("");
+    
     try {
       const res = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, sourceType }),
       });
-      if (res.ok) {
-        setIsDialogOpen(false);
-        setFormData({ name: "", repo: "", branch: "main", path: "", startScript: "npm start", port: "3000" });
-        toast.success("Application created successfully");
-        fetchApplications();
-      } else {
-        const err = await res.json();
+      
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
         toast.error(err.error || "Failed to create application");
+        setIsDeploying(false);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            setDeployLogs((prev) => prev + decoder.decode(value));
+          }
+        }
+        
+        fetchApplications();
       }
     } catch (error) {
       console.error("Failed to create application:", error);
@@ -112,7 +141,10 @@ export default function ApplicationsPage() {
           <h1 className="text-3xl font-bold tracking-tight">แอพพลิเคชั่น (Applications)</h1>
           <p className="text-muted-foreground mt-1">จัดการ Node.js Applications ของคุณ</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            if (!isSubmitting) setIsDialogOpen(open);
+            if (!open) setIsDeploying(false);
+          }}>
           {/* @ts-ignore */}
           <DialogTrigger asChild>
             <Button>
@@ -120,114 +152,136 @@ export default function ApplicationsPage() {
               สร้างแอพพลิเคชั่น (Create Application)
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] md:max-w-[700px]">
-            <form onSubmit={handleCreate}>
-              <DialogHeader>
-                <DialogTitle>สร้างแอพพลิเคชั่นใหม่</DialogTitle>
-                <DialogDescription>
-                  เลือกวิธีติดตั้งแอพพลิเคชั่น Node.js ของคุณ
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">ชื่อแอพ (App Name)</Label>
-                  <Input 
-                    id="name" 
-                    className="h-11 text-base"
-                    placeholder="e.g. my-awesome-api"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            {isDeploying ? (
+              <div className="py-4 space-y-4">
+                <div className="flex items-center text-sm font-medium">
+                  {isSubmitting ? (
+                    <><RefreshCw className="w-4 h-4 mr-2 animate-spin text-primary" /> Deploying...</>
+                  ) : (
+                    <><Activity className="w-4 h-4 mr-2 text-green-500" /> Deployment Process Finished</>
+                  )}
                 </div>
-
-                <Tabs value={sourceType} onValueChange={(val: any) => setSourceType(val)}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="git">
-                      <GitBranch className="w-4 h-4 mr-2" />
-                      Git Repository
-                    </TabsTrigger>
-                    <TabsTrigger value="local">
-                      <FolderCode className="w-4 h-4 mr-2" />
-                      Local Path
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="git" className="space-y-4 mt-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="repo">Git Repository URL</Label>
-                      <Input 
-                        id="repo" 
-                        className="h-11 text-base"
-                        placeholder="https://github.com/user/repo.git"
-                        value={formData.repo}
-                        onChange={(e) => setFormData({...formData, repo: e.target.value})}
-                        required={sourceType === "git"}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="branch">Branch (Optional)</Label>
-                      <Input 
-                        id="branch" 
-                        className="h-11 text-base"
-                        placeholder="main"
-                        value={formData.branch}
-                        onChange={(e) => setFormData({...formData, branch: e.target.value})}
-                      />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="local" className="space-y-4 mt-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="path">Directory Path</Label>
-                      <Input 
-                        id="path" 
-                        className="h-11 text-base"
-                        placeholder="/var/www/my-node-app"
-                        value={formData.path}
-                        onChange={(e) => setFormData({...formData, path: e.target.value})}
-                        required={sourceType === "local"}
-                      />
-                      <p className="text-xs text-muted-foreground">Absolute path to your Node.js application directory on the VPS.</p>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="startScript">Start Command</Label>
-                    <Input 
-                      id="startScript" 
-                      className="h-11 text-base font-mono"
-                      placeholder="npm start"
-                      value={formData.startScript}
-                      onChange={(e) => setFormData({...formData, startScript: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="port">Port</Label>
-                    <Input 
-                      id="port" 
-                      type="number"
-                      className="h-11 text-base"
-                      placeholder="3000"
-                      value={formData.port}
-                      onChange={(e) => setFormData({...formData, port: e.target.value})}
-                      required
-                    />
-                  </div>
+                <div className="bg-white border border-gray-200 rounded-md p-4 text-xs font-mono h-[400px] overflow-y-auto whitespace-pre-wrap text-black shadow-inner">
+                  {deployLogs || "Connecting..."}
+                  <div ref={logsEndRef} />
                 </div>
-
+                {!isSubmitting && (
+                  <Button className="w-full" onClick={() => {
+                    setIsDialogOpen(false);
+                    setIsDeploying(false);
+                  }}>Close</Button>
+                )}
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Deploying..." : "Create & Deploy"}
-                </Button>
-              </DialogFooter>
-            </form>
+            ) : (
+              <form onSubmit={handleCreate} className="space-y-6 py-4">
+                <DialogHeader>
+                  <DialogTitle>สร้างแอพพลิเคชั่นใหม่</DialogTitle>
+                  <DialogDescription>
+                    เลือกวิธีติดตั้งแอพพลิเคชั่น Node.js ของคุณ
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">ชื่อแอพ (App Name)</Label>
+                    <Input 
+                      id="name" 
+                      className="h-11 text-base"
+                      placeholder="e.g. my-awesome-api"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      required
+                    />
+                  </div>
+
+                  <Tabs value={sourceType} onValueChange={(val: any) => setSourceType(val)}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="git">
+                        <GitBranch className="w-4 h-4 mr-2" />
+                        Git Repository
+                      </TabsTrigger>
+                      <TabsTrigger value="local">
+                        <FolderCode className="w-4 h-4 mr-2" />
+                        Local Path
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="git" className="space-y-4 mt-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="repo">Git Repository URL</Label>
+                        <Input 
+                          id="repo" 
+                          className="h-11 text-base"
+                          placeholder="https://github.com/user/repo.git"
+                          value={formData.repo}
+                          onChange={(e) => setFormData({...formData, repo: e.target.value})}
+                          required={sourceType === "git"}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="branch">Branch (Optional)</Label>
+                        <Input 
+                          id="branch" 
+                          className="h-11 text-base"
+                          placeholder="main"
+                          value={formData.branch}
+                          onChange={(e) => setFormData({...formData, branch: e.target.value})}
+                        />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="local" className="space-y-4 mt-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="path">Directory Path</Label>
+                        <Input 
+                          id="path" 
+                          className="h-11 text-base"
+                          placeholder="/var/www/my-node-app"
+                          value={formData.path}
+                          onChange={(e) => setFormData({...formData, path: e.target.value})}
+                          required={sourceType === "local"}
+                        />
+                        <p className="text-xs text-muted-foreground">Absolute path to your Node.js application directory on the VPS.</p>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="startScript">Start Command</Label>
+                      <Input 
+                        id="startScript" 
+                        className="h-11 text-base font-mono"
+                        placeholder="npm start"
+                        value={formData.startScript}
+                        onChange={(e) => setFormData({...formData, startScript: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="port">Port</Label>
+                      <Input 
+                        id="port" 
+                        type="number"
+                        className="h-11 text-base"
+                        placeholder="3000"
+                        value={formData.port}
+                        onChange={(e) => setFormData({...formData, port: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter className="mt-6">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    Create & Deploy
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
