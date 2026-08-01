@@ -24,8 +24,8 @@ export async function DELETE(
     await deleteApp(app.name);
 
     // 2. Remove files
-    const appDir = path.join("/home/okkcom269gmailcom/apps", app.id);
-    await execAsync(`rm -rf ${appDir}`).catch(() => {});
+    const appDir = path.join("/var/www/apps", app.id);
+    await execAsync(`sudo rm -rf ${appDir}`).catch(() => {});
 
     // 3. Delete DB Record
     await db.application.delete({ where: { id } });

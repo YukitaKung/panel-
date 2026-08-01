@@ -67,10 +67,12 @@ export async function POST(req: Request) {
         let targetDir = "";
 
         if (sourceType === "git") {
-          const appsDir = "/home/okkcom269gmailcom/apps";
+          const appsDir = "/var/www/apps";
           targetDir = path.join(appsDir, app.id);
           
-          await fs.mkdir(appsDir, { recursive: true }).catch(() => {});
+          await execAsync(`sudo mkdir -p ${appsDir}`).catch(() => {});
+          await execAsync(`sudo chown -R okkcom269gmailcom:www-data ${appsDir}`).catch(() => {});
+          await execAsync(`sudo chmod -R 775 ${appsDir}`).catch(() => {});
           
           // Clean directory if exists
           await execAsync(`sudo rm -rf ${targetDir}`).catch(() => {});
