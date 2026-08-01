@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Database, Plus, RefreshCw, Trash2, DatabaseZap, Search } from "lucide-react";
+import Link from "next/link";
+import { Database, Plus, RefreshCw, Trash2, DatabaseZap, Search, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -233,7 +234,13 @@ function DBTable({ isLoading, databases, onDelete, type }: { isLoading: boolean,
               </TableCell>
               <TableCell>{db.user}</TableCell>
               <TableCell>{db.sizeMb.toFixed(2)} MB</TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right flex items-center justify-end space-x-2">
+                <Link href={`/databases/studio?type=${type.toLowerCase().includes("mysql") ? "mysql" : "postgres"}&db=${db.name}`}>
+                  <Button variant="outline" size="sm">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Studio
+                  </Button>
+                </Link>
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(db.name)}>
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete
