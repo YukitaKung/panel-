@@ -31,11 +31,7 @@ const items = [
     url: "/subdomains",
     icon: Globe,
   },
-  {
-    title: "เว็บไซต์ PHP (PHP Websites)",
-    url: "/php",
-    icon: FileCode2,
-  },
+
   {
     title: "จัดการโดเมน (DNS)",
     url: "/dns",
