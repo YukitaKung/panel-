@@ -120,7 +120,7 @@ export async function POST(req: Request) {
 
           if (sourceType === "git" && await fs.stat(path.join(targetDir, "package.json")).catch(() => false)) {
             send(`[INFO] Installing dependencies...`);
-            await streamCommand(`cd ${targetDir} && npm install`);
+            await streamCommand(`cd ${targetDir} && HUSKY=0 npm install`);
             
             send(`[INFO] Building application...`);
             await streamCommand(`cd ${targetDir} && npm run build`).catch((err: any) => {
