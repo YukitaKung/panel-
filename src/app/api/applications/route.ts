@@ -65,7 +65,11 @@ export async function POST(req: Request) {
     const stream = new ReadableStream({
       async start(controller) {
         function send(text: string) {
-          controller.enqueue(encoder.encode(text + "\\n"));
+          try {
+            controller.enqueue(encoder.encode(text + "\\n"));
+          } catch (e) {
+            // Ignore if closed
+          }
         }
 
         function streamCommand(command: string): Promise<void> {
