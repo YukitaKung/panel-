@@ -8,10 +8,13 @@ datasource db {
 
 model Application {
   id        String   @id @default(uuid())
-  name      String
-  repo      String
-  branch    String
-  port      Int
+  name        String
+  sourceType  String   @default("git") // "git" or "local"
+  repo        String?
+  branch      String?
+  path        String?
+  startScript String   @default("npm start")
+  port        Int
   status    String   @default("stopped") // running, stopped, error
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
