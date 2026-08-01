@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Database, Table as TableIcon, AlertCircle, RefreshCw, Upload } from "lucide-react";
+import { Database, Table as TableIcon, AlertCircle, RefreshCw, Upload, Edit2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 function StudioContent() {
   const searchParams = useSearchParams();
@@ -19,6 +20,11 @@ function StudioContent() {
   const [tables, setTables] = useState<string[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [data, setData] = useState<{ columns: string[], rows: any[] } | null>(null);
+  
+  // Edit State
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  const [editData, setEditData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -51,6 +57,7 @@ function StudioContent() {
   const handleSelectTable = async (tableName: string | null) => {
     if (!tableName) return;
     setSelectedTable(tableName);
+    setEditingRowIndex(null);
     setIsLoading(true);
     setError(null);
     setUploadMessage(null);
@@ -99,6 +106,39 @@ function StudioContent() {
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleEditClick = (index: number) => {
+    if (!data) return;
+    setEditingRowIndex(index);
+    setEditData({ ...data.rows[index] });
+  };
+
+  const handleSaveRow = async (index: number) => {
+    if (!data || !selectedTable) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const oldData = data.rows[index];
+      const res = await fetch(`/api/databases/studio/data`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, dbName, tableName: selectedTable, oldData, newData: editData }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed to update row");
+      
+      // Update local state to reflect changes
+      const newRows = [...data.rows];
+      newRows[index] = { ...editData };
+      setData({ ...data, rows: newRows });
+      setEditingRowIndex(null);
+      setUploadMessage("Row updated successfully.");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -207,6 +247,7 @@ function StudioContent() {
                       {data.columns.map(c => (
                         <TableHead key={c} className="whitespace-nowrap">{c}</TableHead>
                       ))}
+                      <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -214,9 +255,33 @@ function StudioContent() {
                       <TableRow key={i}>
                         {data.columns.map(c => (
                           <TableCell key={c} className="max-w-xs truncate" title={String(row[c])}>
-                            {row[c] !== null ? String(row[c]) : <span className="text-muted-foreground italic">NULL</span>}
+                            {editingRowIndex === i ? (
+                              <Input 
+                                value={editData[c] === null ? "" : editData[c]}
+                                onChange={(e) => setEditData({ ...editData, [c]: e.target.value })}
+                                className="h-8"
+                              />
+                            ) : (
+                              row[c] !== null ? String(row[c]) : <span className="text-muted-foreground italic">NULL</span>
+                            )}
                           </TableCell>
                         ))}
+                        <TableCell className="text-right">
+                          {editingRowIndex === i ? (
+                            <div className="flex justify-end space-x-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-500/10" onClick={() => handleSaveRow(i)} disabled={isSaving}>
+                                {isSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setEditingRowIndex(null)} disabled={isSaving}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(i)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
