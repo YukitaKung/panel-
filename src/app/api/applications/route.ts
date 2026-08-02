@@ -119,6 +119,9 @@ export async function POST(req: Request) {
           }
 
           if (sourceType === "git" && await fs.stat(path.join(targetDir, "package.json")).catch(() => false)) {
+            send(`[INFO] Checking environment variables...`);
+            await streamCommand(`cd ${targetDir} && if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env && echo "[INFO] Auto-created .env from .env.example"; fi`).catch(() => {});
+            
             send(`[INFO] Installing dependencies...`);
             await streamCommand(`cd ${targetDir} && npm pkg delete scripts.prepare`).catch(() => {});
             await streamCommand(`cd ${targetDir} && HUSKY=0 npm install --legacy-peer-deps`);
@@ -156,7 +159,8 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no"
       }
     });
   } catch (error: any) {
