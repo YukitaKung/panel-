@@ -32,6 +32,7 @@ export default function ApplicationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [deployLogs, setDeployLogs] = useState("");
+  const [gitStatuses, setGitStatuses] = useState<Record<string, any>>({});
   const logsEndRef = useRef<HTMLDivElement>(null);
   
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -57,12 +58,32 @@ export default function ApplicationsPage() {
       const res = await fetch("/api/applications");
       if (res.ok) {
         const data = await res.json();
-        setApplications(Array.isArray(data) ? data : []);
+        const apps = Array.isArray(data) ? data : [];
+        setApplications(apps);
+        
+        // Check git status for git apps
+        apps.forEach((app: any) => {
+          if (app.sourceType === "git") {
+            checkGitStatus(app.id);
+          }
+        });
       }
     } catch (error) {
       console.error("Failed to fetch applications:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const checkGitStatus = async (id: string) => {
+    try {
+      const res = await fetch(`/api/applications/${id}/git`);
+      if (res.ok) {
+        const data = await res.json();
+        setGitStatuses(prev => ({ ...prev, [id]: data }));
+      }
+    } catch (error) {
+      console.error(`Failed to fetch git status for ${id}:`, error);
     }
   };
 
@@ -154,7 +175,7 @@ export default function ApplicationsPage() {
     setDeployLogs(`Starting action: ${action}...\n`);
     
     try {
-      const res = await fetch(`/api/applications/${id}/action`, {
+      const res = await fetch(`/api/applications/${id}/deploy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
@@ -372,6 +393,16 @@ export default function ApplicationsPage() {
                       <span className="flex items-center text-muted-foreground"><GitBranch className="w-3 h-3 mr-1"/> {app.repo}</span>
                       {app.path && (
                         <span className="flex items-center text-muted-foreground"><FolderCode className="w-3 h-3 mr-1"/> {app.path}</span>
+                      )}
+                      {gitStatuses[app.id] && !gitStatuses[app.id].error && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <Badge variant={gitStatuses[app.id].hasUpdates ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
+                            {gitStatuses[app.id].hasUpdates ? "Update Available" : "Up to date"}
+                          </Badge>
+                          <span className="text-muted-foreground text-[10px]">
+                            {gitStatuses[app.id].currentCommit} {gitStatuses[app.id].hasUpdates && `→ ${gitStatuses[app.id].latestCommit}`}
+                          </span>
+                        </div>
                       )}
                     </>
                   ) : (
