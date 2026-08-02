@@ -51,3 +51,12 @@ model CronJob {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  name      String
+  key       String   @unique
+  lastUsedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

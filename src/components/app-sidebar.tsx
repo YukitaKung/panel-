@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AppWindow, Database, FileCode2, Globe, HardDrive, Settings, SquareTerminal, Server, FolderCode, Clock, Network, Users, Terminal, LogOut } from "lucide-react";
+import { Activity, AppWindow, Database, FileCode2, Globe, HardDrive, Settings, SquareTerminal, Server, FolderCode, Clock, Network, Users, Terminal, LogOut, Key, BookOpen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -76,6 +76,16 @@ const items = [
     title: "ตั้งค่า (Settings)",
     url: "/settings",
     icon: Settings,
+  },
+  {
+    title: "คีย์ API (API Keys)",
+    url: "/api-keys",
+    icon: Key,
+  },
+  {
+    title: "คู่มือ API (API Docs)",
+    url: "/api-docs",
+    icon: BookOpen,
   },
 ];
 
