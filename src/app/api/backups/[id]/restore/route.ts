@@ -54,13 +54,18 @@ export async function POST(
                 // Check if directory exists
                 await fs.access(appDir);
                 await execAsync(`cd ${appDir} && npm install && npm run build`);
+                // Ensure the app is running in pm2
+                try {
+                  await execAsync(`pm2 restart app-${app.id}`);
+                } catch {
+                  await execAsync(`cd ${appDir} && pm2 start npm --name "app-${app.id}" -- start`);
+                }
               } catch (e) {
-                console.error(`Failed to rebuild app ${app.name} after restore:`, e);
+                console.error(`Failed to rebuild/restart app ${app.name} after restore:`, e);
               }
             }
-
-            await execAsync("pm2 update"); // Updates pm2 and reloads saved states if pm2 dump was restored
-            await execAsync("pm2 resurrect");
+            
+            await execAsync("pm2 save");
           } catch (e) {
             console.error("Failed to restart services after restore:", e);
           }
