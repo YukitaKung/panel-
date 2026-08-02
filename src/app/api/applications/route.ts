@@ -135,7 +135,7 @@ export async function POST(req: Request) {
             
             send(`[INFO] Building application...`);
             await streamCommand(`cd ${targetDir} && npm run build`).catch((err: any) => {
-              send(`[WARN] Build script failed or not present: ${err.message}`);
+              throw new Error(`Build failed: ${err.message}`);
             });
           }
 
