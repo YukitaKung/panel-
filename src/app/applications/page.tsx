@@ -396,8 +396,12 @@ export default function ApplicationsPage() {
                       )}
                       {gitStatuses[app.id] && !gitStatuses[app.id].error && (
                         <div className="mt-2 flex items-center space-x-2">
-                          <Badge variant={gitStatuses[app.id].hasUpdates ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
-                            {gitStatuses[app.id].hasUpdates ? "Update Available" : "Up to date"}
+                          <Badge 
+                            variant={gitStatuses[app.id].hasUpdates ? "default" : "secondary"} 
+                            className={`text-[10px] px-1.5 py-0 ${gitStatuses[app.id].hasUpdates ? "cursor-pointer hover:bg-primary/90" : ""}`}
+                            onClick={() => gitStatuses[app.id].hasUpdates && handleStreamingAction(app.id, "redeploy")}
+                          >
+                            {gitStatuses[app.id].hasUpdates ? "Update Available (Click to Deploy)" : "Up to date"}
                           </Badge>
                           <span className="text-muted-foreground text-[10px]">
                             {gitStatuses[app.id].currentCommit} {gitStatuses[app.id].hasUpdates && `→ ${gitStatuses[app.id].latestCommit}`}
