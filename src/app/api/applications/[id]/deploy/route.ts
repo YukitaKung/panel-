@@ -51,10 +51,10 @@ export async function POST(
           // 1. Stop PM2 process
           send(`[INFO] Stopping application ${app.name}...`);
           try {
-            await stopApp(pm2Name);
+            await streamCommand(`pm2 stop "${pm2Name}"`, appDir);
             send(`[SUCCESS] Stopped ${app.name}`);
           } catch (e) {
-            send(`[WARN] Could not stop app, it might not be running.`);
+            send(`[WARN] Could not stop app, it might not be running or already stopped.`);
           }
 
           // 2. Execute Action
@@ -69,7 +69,8 @@ export async function POST(
             send(`[INFO] Checking for build script...`);
             try {
               const packageJsonPath = path.join(appDir, "package.json");
-              const pkgData = await require("fs/promises").readFile(packageJsonPath, "utf8");
+              const fs = require("fs").promises;
+              const pkgData = await fs.readFile(packageJsonPath, "utf8");
               const pkg = JSON.parse(pkgData);
               if (pkg.scripts && pkg.scripts.build) {
                 send(`[INFO] Running npm run build...`);
@@ -91,7 +92,12 @@ export async function POST(
 
           // 3. Restart PM2 process
           send(`[INFO] Starting application ${app.name}...`);
-          await streamCommand(`pm2 start "${pm2Name}"`, appDir);
+          try {
+            await streamCommand(`pm2 restart "${pm2Name}"`, appDir);
+          } catch (e) {
+            // Fallback to start if restart fails because it doesn't exist in PM2 list
+            await streamCommand(`pm2 start "${pm2Name}"`, appDir);
+          }
           
           send(`[SUCCESS] Action completed successfully!`);
           controller.close();
