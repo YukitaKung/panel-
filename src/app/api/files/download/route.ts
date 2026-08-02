@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     
     const stream = new ReadableStream({
       start(controller) {
-        fileStream.on('data', (chunk) => controller.enqueue(new Uint8Array(chunk)));
+        fileStream.on('data', (chunk) => controller.enqueue(new Uint8Array(chunk as any)));
         fileStream.on('end', () => controller.close());
         fileStream.on('error', (err) => controller.error(err));
       },
