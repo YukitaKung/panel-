@@ -91,8 +91,8 @@ export default function LogsPage() {
         </div>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <CardHeader className="py-3 px-4 border-b bg-muted/30">
             <div className="flex items-center justify-between">
               <TabsList>
