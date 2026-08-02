@@ -125,7 +125,8 @@ export default function ApiDocsPage() {
               <div>
                 <h4 className="font-medium text-sm mb-2">Request Body (JSON):</h4>
                 <CodeBlock code={`{
-  "subdomain": "api-v1",
+  "domain": "api-v1",
+  "type": "node",
   "port": 8080
 }`} />
               </div>
@@ -134,7 +135,7 @@ export default function ApiDocsPage() {
                 <CodeBlock language="bash" code={`curl -X POST http://YOUR_SERVER_IP:5555/api/subdomains \\
   -H "Authorization: Bearer sk_live_..." \\
   -H "Content-Type: application/json" \\
-  -d '{"subdomain": "api-v1", "port": 8080}'`} />
+  -d '{"domain": "api-v1", "type": "node", "port": 8080}'`} />
               </div>
             </CardContent>
           </Card>
