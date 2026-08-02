@@ -1,11 +1,52 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { deleteApp, stopApp } from "@/lib/system/pm2";
+import { deleteApp, stopApp, restartApp } from "@/lib/system/pm2";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 
 const execAsync = promisify(exec);
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const app = await db.application.findUnique({ where: { id } });
+
+    if (!app) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    }
+
+    const pm2Name = `app-${app.id}`;
+    let success = false;
+
+    if (body.action === "restart") {
+      success = await restartApp(pm2Name);
+    } else if (body.action === "stop") {
+      success = await stopApp(pm2Name);
+    } else if (body.action === "start") {
+      try {
+        await execAsync(`pm2 start "${pm2Name}"`);
+        success = true;
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      return NextResponse.json({ error: "Invalid action. Use start, stop, or restart." }, { status: 400 });
+    }
+
+    if (!success) {
+      return NextResponse.json({ error: "Failed to execute action on PM2" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, action: body.action });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to control application" }, { status: 500 });
+  }
+}
 
 export async function DELETE(
   request: Request,

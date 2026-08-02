@@ -82,10 +82,12 @@ export default function ApiDocsPage() {
       </Card>
 
       <Tabs defaultValue="subdomains" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex flex-wrap gap-2 h-auto p-1">
           <TabsTrigger value="subdomains">Subdomains</TabsTrigger>
           <TabsTrigger value="databases">Databases</TabsTrigger>
           <TabsTrigger value="content">Database Content</TabsTrigger>
+          <TabsTrigger value="applications">Applications</TabsTrigger>
+          <TabsTrigger value="system">System & Logs</TabsTrigger>
         </TabsList>
 
         {/* SUBDOMAINS API */}
@@ -215,6 +217,88 @@ export default function ApiDocsPage() {
     "query": "INSERT INTO users (name, email) VALUES (\\'Alice\\', \\'alice@example.com\\')"
   }'`} />
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* APPLICATIONS API */}
+        <TabsContent value="applications" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">GET</Badge>
+                <CardTitle className="text-lg">/api/applications</CardTitle>
+              </div>
+              <CardDescription>List all PM2 applications deployed on the server.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CodeBlock code={`[
+  {
+    "id": "app-1234",
+    "name": "My Node.js App",
+    "status": "online",
+    "port": 3000
+  }
+]`} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">PUT</Badge>
+                <CardTitle className="text-lg">/api/applications/[id]</CardTitle>
+              </div>
+              <CardDescription>Control a PM2 application (Start, Stop, Restart).</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-medium text-sm mb-2">Request Body (JSON):</h4>
+                <CodeBlock code={`{
+  "action": "restart" // Can be "start", "stop", or "restart"
+}`} />
+              </div>
+              <div>
+                <h4 className="font-medium text-sm mb-2">cURL Example:</h4>
+                <CodeBlock language="bash" code={`curl -X PUT http://YOUR_SERVER_IP:5555/api/applications/app-1234 \\
+  -H "Authorization: Bearer sk_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"action": "restart"}'`} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* SYSTEM API */}
+        <TabsContent value="system" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">GET</Badge>
+                <CardTitle className="text-lg">/api/system/stats</CardTitle>
+              </div>
+              <CardDescription>Fetch real-time server statistics (CPU, RAM, Disk, Uptime).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CodeBlock code={`{
+  "cpu": { "usage": 15 },
+  "memory": { "used": 1024, "total": 2048, "percentage": 50 },
+  "os": { "uptime": 86400 }
+}`} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">GET</Badge>
+                <CardTitle className="text-lg">/api/logs</CardTitle>
+              </div>
+              <CardDescription>Fetch recent PM2 application logs and HostPanel system logs.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CodeBlock language="bash" code={`curl -X GET http://YOUR_SERVER_IP:5555/api/logs \\
+  -H "Authorization: Bearer sk_live_..."`} />
             </CardContent>
           </Card>
         </TabsContent>

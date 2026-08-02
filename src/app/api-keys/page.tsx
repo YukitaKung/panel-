@@ -232,17 +232,18 @@ export default function ApiKeysPage() {
               No API keys generated yet.
             </div>
           ) : (
-            <div className="rounded-md border">
-              <div className="grid grid-cols-12 gap-4 p-4 font-medium border-b bg-muted/50 text-sm">
-                <div className="col-span-3">Name</div>
-                <div className="col-span-4">Key</div>
-                <div className="col-span-2">Created</div>
-                <div className="col-span-2">Last Used</div>
-                <div className="col-span-1 text-right">Actions</div>
-              </div>
-              <div className="divide-y">
-                {keys.map((key) => (
-                  <div key={key.id} className="grid grid-cols-12 gap-4 p-4 items-center text-sm">
+            <div className="rounded-md border overflow-x-auto">
+              <div className="min-w-[800px]">
+                <div className="grid grid-cols-12 gap-4 p-4 font-medium border-b bg-muted/50 text-sm">
+                  <div className="col-span-3">Name</div>
+                  <div className="col-span-4">Key</div>
+                  <div className="col-span-2">Created</div>
+                  <div className="col-span-2">Last Used</div>
+                  <div className="col-span-1 text-right">Actions</div>
+                </div>
+                <div className="divide-y">
+                  {keys.map((key) => (
+                    <div key={key.id} className="grid grid-cols-12 gap-4 p-4 items-center text-sm">
                     <div className="col-span-3 font-medium">{key.name}</div>
                     <div className="col-span-4 font-mono text-muted-foreground">
                       {maskKey(key.key)}
@@ -261,9 +262,10 @@ export default function ApiKeysPage() {
                       <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleRevokeClick(key.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
