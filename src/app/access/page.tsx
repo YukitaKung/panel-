@@ -205,7 +205,15 @@ export default function AccessPage() {
                       </div>
                     </TableCell>
                 </TableRow>
-              ))}
+                )
+              })}
+              {accounts.length === 0 && !isLoading && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    ไม่มีบัญชีผู้ใช้
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
