@@ -12,8 +12,11 @@ export async function GET(request: Request) {
     return new NextResponse('Missing path', { status: 400 });
   }
 
-  const normalized = filePath.replace(/^[\/\\]+/, "");
-  const resolved = path.resolve(BASE_DIR, normalized);
+  let resolved = filePath;
+  if (!resolved.startsWith(BASE_DIR)) {
+    const normalized = filePath.replace(/^[\/\\]+/, "");
+    resolved = path.resolve(BASE_DIR, normalized);
+  }
   
   if (!resolved.startsWith(BASE_DIR)) {
     return new NextResponse('Access Denied', { status: 403 });
