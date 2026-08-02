@@ -38,13 +38,20 @@ export async function POST(
         // Create target directory if it doesn't exist
         await fs.mkdir(targetPath, { recursive: true }).catch(() => {});
 
-        // Extract tar.gz to target directory
-        // Note: tar by default extracts with the same directory structure. 
-        // If we backed up /var/www/apps/my-app, extracting it to / might be needed,
-        // or extracting with --strip-components.
-        // Assuming we backed up the full absolute path, we can extract to / (root) 
-        // to restore it exactly where it was.
+        // Extract tar.gz to root directory (tar naturally strips leading '/' during creation)
         await execAsync(`sudo tar -xzf ${backup.path} -C /`);
+
+        // If it's a full system backup or contains config, restart services
+        if (backup.type === "Full System" || backup.type === "Advanced") {
+          try {
+            await execAsync("sudo systemctl reload nginx");
+            await execAsync("pm2 update"); // Updates pm2 and reloads saved states if pm2 dump was restored
+            // If pm2 dump was restored, we might need to pm2 resurrect
+            await execAsync("pm2 resurrect");
+          } catch (e) {
+            console.error("Failed to restart services after restore:", e);
+          }
+        }
 
         await db.notification.create({
           data: {

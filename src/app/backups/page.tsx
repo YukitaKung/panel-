@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, Settings, Trash2, HardDrive, Download, Upload, RotateCcw, Database, AppWindow, Server } from "lucide-react";
+import { Plus, Settings, Trash2, HardDrive, Download, Upload, RotateCcw, Database, AppWindow, Server, Check } from "lucide-react";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -11,19 +13,17 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const getTypeIcon = (type: string) => {
   switch (type) {
     case "Server":
+    case "Full System":
       return <Server className="h-4 w-4 text-muted-foreground" />;
     case "Database":
       return <Database className="h-4 w-4 text-muted-foreground" />;
@@ -39,9 +39,20 @@ export default function BackupsPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  
+  // Advanced Form State
   const [newBackupName, setNewBackupName] = useState("");
-  const [newBackupType, setNewBackupType] = useState("Application");
-  const [newBackupTarget, setNewBackupTarget] = useState("");
+  const [targetType, setTargetType] = useState<"all" | "selected">("all");
+  
+  // Options State
+  const [optWebsiteData, setOptWebsiteData] = useState(true);
+  const [optDatabase, setOptDatabase] = useState(true);
+  const [optPanelConfigs, setOptPanelConfigs] = useState(true);
+  
+  // Fetch lists for "Selected Domains"
+  const [apps, setApps] = useState<any[]>([]);
+  const [subdomains, setSubdomains] = useState<any[]>([]);
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmRestore, setConfirmRestore] = useState<any | null>(null);
@@ -57,23 +68,57 @@ export default function BackupsPage() {
     }
   };
 
+  const fetchTargets = async () => {
+    try {
+      const [appRes, subRes] = await Promise.all([
+        fetch("/api/applications"),
+        fetch("/api/subdomains")
+      ]);
+      if (appRes.ok) setApps(await appRes.json());
+      if (subRes.ok) setSubdomains(await subRes.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchBackups();
+    fetchTargets();
     const interval = setInterval(fetchBackups, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  const togglePathSelection = (path: string) => {
+    setSelectedPaths(prev => 
+      prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+    );
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (targetType === "selected" && selectedPaths.length === 0 && optWebsiteData) {
+        throw new Error("Please select at least one application or subdomain, or uncheck Website Data.");
+      }
+      
       toast.loading("Starting backup process...");
       const res = await fetch("/api/backups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: newBackupName,
-          type: newBackupType,
-          targetPath: newBackupTarget
+          name: newBackupName || "manual",
+          type: "Advanced",
+          options: {
+            targets: {
+              all: targetType === "all",
+              selected: selectedPaths
+            },
+            opts: {
+              websiteData: optWebsiteData,
+              database: optDatabase,
+              panelConfigs: optPanelConfigs
+            }
+          }
         })
       });
       if (res.ok) {
@@ -81,7 +126,6 @@ export default function BackupsPage() {
         toast.success("Backup started in background");
         setIsCreateOpen(false);
         setNewBackupName("");
-        setNewBackupTarget("");
         fetchBackups();
       } else {
         throw new Error("Failed to start backup");
@@ -115,7 +159,6 @@ export default function BackupsPage() {
       const res = await fetch(`/api/backups/${backup.id}/restore`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Just send a default targetPath (we extract to / root usually for full tar archives)
         body: JSON.stringify({ targetPath: "/" }) 
       });
       if (res.ok) {
@@ -143,14 +186,14 @@ export default function BackupsPage() {
         open={!!confirmRestore}
         onOpenChange={(open) => !open && setConfirmRestore(null)}
         title="Restore Backup"
-        description={`Are you sure you want to restore ${confirmRestore?.name}? This will overwrite existing files in its original path.`}
+        description={`Are you sure you want to restore ${confirmRestore?.name}? This will overwrite existing files across the system depending on what was backed up.`}
         onConfirm={() => confirmRestore && handleRestore(confirmRestore)}
       />
       
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Backups</h1>
-          <p className="text-muted-foreground mt-1">Manage system, application, and database backups.</p>
+          <p className="text-muted-foreground mt-1">Manage full system backups and restore points.</p>
         </div>
         <div className="flex gap-2">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -158,47 +201,140 @@ export default function BackupsPage() {
               <Plus className="h-4 w-4 mr-2" />
               Create Backup
             </DialogTrigger>
-            <DialogContent>
-              <form onSubmit={handleCreate}>
-                <DialogHeader>
-                  <DialogTitle>Create Backup</DialogTitle>
+            <DialogContent className="max-w-4xl p-0 overflow-hidden">
+              <form onSubmit={handleCreate} className="flex flex-col h-[85vh] max-h-[800px]">
+                <DialogHeader className="p-6 border-b shrink-0 bg-muted/20">
+                  <DialogTitle className="text-xl">Create Advanced Backup</DialogTitle>
                   <DialogDescription>
-                    Run a new backup process in the background.
+                    Configure what data you want to include in this backup archive.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Backup Name (Optional)</Label>
-                    <Input 
-                      placeholder="e.g. my-app-v1" 
-                      value={newBackupName} 
-                      onChange={e => setNewBackupName(e.target.value)} 
-                    />
+                
+                <ScrollArea className="flex-1 p-6">
+                  <div className="space-y-8">
+                    
+                    {/* Backup Name */}
+                    <div className="space-y-3">
+                      <Label className="text-base font-semibold">Backup Name (Optional)</Label>
+                      <Input 
+                        placeholder="e.g. migration-backup" 
+                        value={newBackupName} 
+                        onChange={e => setNewBackupName(e.target.value)} 
+                        className="max-w-md"
+                      />
+                    </div>
+
+                    {/* Target Selection */}
+                    <div className="space-y-4">
+                      <h3 className="text-base font-semibold border-b pb-2">Target Selection</h3>
+                      <div className="space-y-4">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="targetType" 
+                            checked={targetType === "all"} 
+                            onChange={() => setTargetType("all")}
+                            className="w-4 h-4 accent-primary"
+                          />
+                          <span className="font-medium">All Applications & Domains</span>
+                        </label>
+                        
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="targetType" 
+                            checked={targetType === "selected"} 
+                            onChange={() => setTargetType("selected")}
+                            className="w-4 h-4 accent-primary"
+                          />
+                          <span className="font-medium">Selected Applications & Domains</span>
+                        </label>
+
+                        {targetType === "selected" && (
+                          <div className="ml-7 border p-4 bg-muted/10 space-y-4 max-h-[250px] overflow-auto">
+                            {apps.length === 0 && subdomains.length === 0 && (
+                              <p className="text-sm text-muted-foreground">No applications or subdomains found.</p>
+                            )}
+                            
+                            {apps.length > 0 && (
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Node.js Apps</Label>
+                                {apps.map(app => {
+                                  const path = `/var/www/apps/${app.id}`;
+                                  return (
+                                    <div key={app.id} className="flex items-center gap-2">
+                                      <Checkbox 
+                                        checked={selectedPaths.includes(path)}
+                                        onCheckedChange={() => togglePathSelection(path)}
+                                      />
+                                      <span className="text-sm">{app.name}</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+
+                            {subdomains.length > 0 && (
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Subdomains / PHP</Label>
+                                {subdomains.map(sub => {
+                                  const path = sub.target.startsWith('/') ? sub.target : `/var/www/domains/${sub.domain}`;
+                                  return (
+                                    <div key={sub.id} className="flex items-center gap-2">
+                                      <Checkbox 
+                                        checked={selectedPaths.includes(path)}
+                                        onCheckedChange={() => togglePathSelection(path)}
+                                      />
+                                      <span className="text-sm">{sub.domain}</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Options */}
+                    <div className="space-y-4">
+                      <h3 className="text-base font-semibold border-b pb-2">Options</h3>
+                      <p className="text-sm text-muted-foreground">Select data to backup</p>
+                      
+                      <div className="grid gap-4">
+                        {/* Website Data */}
+                        <label className="flex items-start gap-3 p-4 border bg-card hover:bg-accent/50 cursor-pointer transition-colors">
+                          <Checkbox checked={optWebsiteData} onCheckedChange={(c) => setOptWebsiteData(!!c)} className="mt-1" />
+                          <div>
+                            <p className="font-medium">Website Data</p>
+                            <p className="text-sm text-muted-foreground">Backs up all user files for the selected domains and applications.</p>
+                          </div>
+                        </label>
+
+                        {/* Database */}
+                        <label className="flex items-start gap-3 p-4 border bg-card hover:bg-accent/50 cursor-pointer transition-colors">
+                          <Checkbox checked={optDatabase} onCheckedChange={(c) => setOptDatabase(!!c)} className="mt-1" />
+                          <div>
+                            <p className="font-medium">Panel Database</p>
+                            <p className="text-sm text-muted-foreground">Includes all system settings, users, and application configurations (SQLite dev.db).</p>
+                          </div>
+                        </label>
+
+                        {/* Panel Configs */}
+                        <label className="flex items-start gap-3 p-4 border bg-card hover:bg-accent/50 cursor-pointer transition-colors">
+                          <Checkbox checked={optPanelConfigs} onCheckedChange={(c) => setOptPanelConfigs(!!c)} className="mt-1" />
+                          <div>
+                            <p className="font-medium">Panel Configurations</p>
+                            <p className="text-sm text-muted-foreground">Backs up Nginx vhost configurations and PM2 states.</p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
                   </div>
-                  <div className="space-y-2">
-                    <Label>Backup Type</Label>
-                    <Select value={newBackupType} onValueChange={(val) => val && setNewBackupType(val)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Application">Application Files</SelectItem>
-                        <SelectItem value="Database">Database (SQLite)</SelectItem>
-                        <SelectItem value="Server">Subdomain/Server Folder</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Target Absolute Path</Label>
-                    <Input 
-                      placeholder="e.g. /var/www/apps/my-app" 
-                      value={newBackupTarget} 
-                      onChange={e => setNewBackupTarget(e.target.value)}
-                      required 
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
+                </ScrollArea>
+
+                <DialogFooter className="p-6 border-t shrink-0 bg-muted/20">
                   <Button variant="outline" type="button" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
                   <Button type="submit">Start Backup</Button>
                 </DialogFooter>
@@ -212,7 +348,7 @@ export default function BackupsPage() {
         <CardHeader>
           <CardTitle>Backup Archives</CardTitle>
           <CardDescription>
-            List of all available backups on this server.
+            List of all available backups on this server. Files are stored in /var/www/backups.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -275,6 +411,13 @@ export default function BackupsPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {backups.length === 0 && !isLoading && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    No backup archives found.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

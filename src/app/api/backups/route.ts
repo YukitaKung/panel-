@@ -20,41 +20,81 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { name, type, targetPath } = await request.json(); // type: "Application" | "Server" | "Database"
+    const payload = await request.json();
+    const { name, type, targetPath, options } = payload; 
     
-    // Ensure backup directory exists
     const backupDir = "/var/www/backups";
     await fs.mkdir(backupDir, { recursive: true }).catch(() => {});
 
-    // Generate filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = `backup-${type.toLowerCase()}-${name.replace(/[^a-zA-Z0-9]/g, "-")}-${timestamp}.tar.gz`;
+    const safeName = (name || "backup").replace(/[^a-zA-Z0-9]/g, "-");
+    const filename = `backup-${type.toLowerCase()}-${safeName}-${timestamp}.tar.gz`;
     const fullPath = path.join(backupDir, filename);
 
-    // Create DB entry (pending)
     const backup = await db.backup.create({
       data: {
         name: filename,
-        type,
+        type: type === "Advanced" ? "Full System" : type,
         size: "Pending...",
         status: "Processing",
         path: fullPath
       }
     });
 
-    // Run backup in background
     Promise.resolve().then(async () => {
       try {
-        if (type === "Database") {
-          // If it's a database, we might need a different command.
-          // For now, if they give a path, we compress that path or .db file
-          await execAsync(`sudo tar -czf ${fullPath} ${targetPath}`);
+        let pathsToBackup: string[] = [];
+
+        if (type === "Advanced") {
+          // Parse advanced options
+          const { targets, opts } = options;
+          
+          if (opts.websiteData) {
+            if (targets.all) {
+              pathsToBackup.push("/var/www/apps");
+              pathsToBackup.push("/var/www/subdomains");
+            } else if (targets.selected && targets.selected.length > 0) {
+              pathsToBackup.push(...targets.selected);
+            }
+          }
+          
+          if (opts.database) {
+            pathsToBackup.push(path.join(process.cwd(), "dev.db"));
+          }
+          
+          if (opts.panelConfigs) {
+            pathsToBackup.push("/etc/nginx/sites-available");
+            pathsToBackup.push("/etc/nginx/sites-enabled");
+            // Could also backup pm2 dump file if exists
+            pathsToBackup.push(path.join(process.env.HOME || "/root", ".pm2/dump.pm2"));
+          }
+
+          // Filter out paths that don't exist to avoid tar errors
+          const validPaths = [];
+          for (const p of pathsToBackup) {
+            try {
+              await fs.access(p);
+              validPaths.push(p);
+            } catch {
+              console.warn(`Path not found, skipping in backup: ${p}`);
+            }
+          }
+
+          if (validPaths.length === 0) {
+            throw new Error("No valid paths to backup based on the selected options.");
+          }
+
+          await execAsync(`sudo tar -czf ${fullPath} ${validPaths.join(" ")}`);
+          
         } else {
-          // Application or Server (Subdomain)
-          await execAsync(`sudo tar -czf ${fullPath} ${targetPath}`);
+          // Standard backup (legacy/simple dialog if we still support it, or default)
+          if (targetPath) {
+             await execAsync(`sudo tar -czf ${fullPath} ${targetPath}`);
+          } else {
+             throw new Error("No target path provided for standard backup");
+          }
         }
         
-        // Update size
         const stats = await fs.stat(fullPath);
         const sizeMB = (stats.size / (1024 * 1024)).toFixed(2) + " MB";
 
@@ -63,7 +103,6 @@ export async function POST(request: Request) {
           data: { status: "Completed", size: sizeMB }
         });
 
-        // Notify
         await db.notification.create({
           data: {
             title: "Backup Completed",
@@ -76,12 +115,12 @@ export async function POST(request: Request) {
         console.error("Backup process error:", err);
         await db.backup.update({
           where: { id: backup.id },
-          data: { status: "Error" }
+          data: { status: "Error", size: "Failed" }
         });
         await db.notification.create({
           data: {
             title: "Backup Failed",
-            message: `Failed to create backup ${filename}.`,
+            message: `Failed to create backup ${filename}: ${err.message}`,
             type: "error"
           }
         });
