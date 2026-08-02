@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Server, Monitor, Info, HardDrive, Cpu, MemoryStick } from "lucide-react";
+import { Server, Monitor, Info, HardDrive, Cpu, MemoryStick, Clock } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<any>(null);
@@ -24,6 +26,31 @@ export default function SettingsPage() {
     };
     fetchSettings();
   }, []);
+
+  const handleTimezoneChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTz = e.target.value;
+    if (!newTz) return;
+    
+    try {
+      toast.loading("Updating timezone...");
+      const res = await fetch("/api/system/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: newTz })
+      });
+      
+      if (res.ok) {
+        toast.dismiss();
+        toast.success("Timezone updated successfully!");
+        setSettings({ ...settings, timezone: newTz });
+      } else {
+        throw new Error("Failed to update");
+      }
+    } catch (err) {
+      toast.dismiss();
+      toast.error("Failed to update timezone");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -59,9 +86,22 @@ export default function SettingsPage() {
                 <span className="text-muted-foreground">Kernel Version</span>
                 <span className="font-medium">{settings?.kernel || "-"}</span>
               </div>
-              <div className="flex justify-between items-center py-2">
+              <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-muted-foreground">Public IP</span>
                 <span className="font-medium">{settings?.ip || "-"}</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-4 w-4"/> Timezone</span>
+                <select 
+                  className="bg-muted text-foreground border border-border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-[200px]"
+                  value={settings?.timezone || ""}
+                  onChange={handleTimezoneChange}
+                >
+                  <option value="" disabled>Select Timezone</option>
+                  {settings?.availableTimezones?.map((tz: string) => (
+                    <option key={tz} value={tz}>{tz}</option>
+                  ))}
+                </select>
               </div>
             </CardContent>
           </Card>
