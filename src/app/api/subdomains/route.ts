@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
     if (type === "php") {
       // Create web root
-      await execAsync(`sudo mkdir -p /var/www/${domain}`);
+      await execAsync(`sudo mkdir -p /var/www/${domain}/public_html`);
       await execAsync(`sudo chown -R okkcom269gmailcom:www-data /var/www/${domain}`);
       await execAsync(`sudo chmod -R 775 /var/www/${domain}`);
       
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 server {
     listen 80;
     server_name ${domain};
-    root /var/www/${domain};
+    root /var/www/${domain}/public_html;
     index index.php index.html index.htm;
 
     location / {
@@ -151,7 +151,7 @@ export async function PUT(request: Request) {
 
     if (type === "php") {
       // Create web root
-      await execAsync(`sudo mkdir -p /var/www/${domain}`);
+      await execAsync(`sudo mkdir -p /var/www/${domain}/public_html`);
       await execAsync(`sudo chown -R okkcom269gmailcom:www-data /var/www/${domain}`);
       await execAsync(`sudo chmod -R 775 /var/www/${domain}`);
       
@@ -159,7 +159,7 @@ export async function PUT(request: Request) {
 server {
     listen 80;
     server_name ${domain};
-    root /var/www/${domain};
+    root /var/www/${domain}/public_html;
     index index.php index.html index.htm;
 
     location / {
