@@ -98,7 +98,12 @@ export async function POST(req: Request) {
 
           if (sourceType === "git") {
             const appsDir = "/var/www/apps";
-            targetDir = path.join(appsDir, app.id);
+            const safeName = app.name.replace(/[^a-zA-Z0-9-]/g, "-").toLowerCase().replace(/-+/g, "-");
+            const shortId = app.id.split("-")[0];
+            const folderName = safeName && safeName !== "-" ? `${safeName}-${shortId}` : `app-${shortId}`;
+            targetDir = path.join(appsDir, folderName);
+            
+            await db.application.update({ where: { id: app.id }, data: { path: targetDir } });
             
             await execAsync(`sudo mkdir -p ${appsDir}`).catch(() => {});
             await execAsync(`sudo chown -R okkcom269gmailcom:www-data ${appsDir}`).catch(() => {});

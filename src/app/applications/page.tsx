@@ -303,9 +303,14 @@ export default function ApplicationsPage() {
                   <Package className="w-5 h-5 mr-2 text-primary" />
                   {app.name}
                 </CardTitle>
-                <CardDescription className="font-mono text-xs">
+                <CardDescription className="font-mono text-xs space-y-1 mt-2">
                   {app.sourceType === "git" ? (
-                    <span className="flex items-center text-muted-foreground"><GitBranch className="w-3 h-3 mr-1"/> {app.repo}</span>
+                    <>
+                      <span className="flex items-center text-muted-foreground"><GitBranch className="w-3 h-3 mr-1"/> {app.repo}</span>
+                      {app.path && (
+                        <span className="flex items-center text-muted-foreground"><FolderCode className="w-3 h-3 mr-1"/> {app.path}</span>
+                      )}
+                    </>
                   ) : (
                     <span className="flex items-center text-muted-foreground"><FolderCode className="w-3 h-3 mr-1"/> {app.path}</span>
                   )}

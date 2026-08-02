@@ -25,8 +25,10 @@ export async function DELETE(
     await deleteApp(pm2Name).catch(() => {});
 
     // 2. Remove files
-    const appDir = path.join("/var/www/apps", app.id);
-    await execAsync(`sudo rm -rf ${appDir}`).catch(() => {});
+    const appDir = app.path || path.join("/var/www/apps", app.id);
+    if (appDir.startsWith("/var/www/apps")) {
+      await execAsync(`sudo rm -rf ${appDir}`).catch(() => {});
+    }
 
     // 3. Delete DB Record
     await db.application.delete({ where: { id } });
