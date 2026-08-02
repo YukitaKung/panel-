@@ -1,24 +1,72 @@
 "use client";
 
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Play, Download, Search, RefreshCw, Trash2, StopCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-
-const logData = `[2024-10-25 10:15:32] INFO: Server started on port 3001
-[2024-10-25 10:15:33] Database connection established successfully.
-[2024-10-25 10:15:35] Incoming GET request to /api/users
-[2024-10-25 10:15:35] Response 200 OK (15ms)
-[2024-10-25 10:18:22] Incoming POST request to /api/login
-[2024-10-25 10:18:22] Response 200 OK (42ms)
-[2024-10-25 10:22:15] Incoming GET request to /api/metrics
-[2024-10-25 10:22:15] Response 200 OK (12ms)
-[2024-10-25 10:25:01] CRON: Running scheduled cleanup task...
-[2024-10-25 10:25:02] CRON: Cleanup completed. Removed 42 temp files.
-`;
+import { toast } from "sonner";
 
 export default function LogsPage() {
+  const [activeTab, setActiveTab] = useState("app");
+  const [logs, setLogs] = useState<{ [key: string]: string }>({});
+  const [isPaused, setIsPaused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const endOfLogsRef = useRef<HTMLDivElement>(null);
+  
+  const fetchLogs = async (type: string) => {
+    try {
+      const res = await fetch(`/api/logs?type=${type}`);
+      const data = await res.json();
+      if (res.ok) {
+        setLogs(prev => ({ ...prev, [type]: data.logs }));
+      } else {
+        toast.error(`Error fetching ${type} logs: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Fetch logs error:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs(activeTab);
+    
+    if (isPaused) return;
+
+    const interval = setInterval(() => {
+      fetchLogs(activeTab);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [activeTab, isPaused]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (!isPaused) {
+      endOfLogsRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs, activeTab, isPaused]);
+
+  const handleClear = () => {
+    setLogs(prev => ({ ...prev, [activeTab]: "" }));
+  };
+
+  const handleExport = () => {
+    const logContent = logs[activeTab] || "";
+    const blob = new Blob([logContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${activeTab}-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const displayedLogs = (logs[activeTab] || "").split("\n").filter(line => 
+    line.toLowerCase().includes(searchQuery.toLowerCase())
+  ).join("\n");
+
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col space-y-6">
       <div className="flex items-center justify-between">
@@ -29,7 +77,7 @@ export default function LogsPage() {
       </div>
 
       <Card className="flex-1 flex flex-col overflow-hidden">
-        <Tabs defaultValue="app" className="flex-1 flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           <CardHeader className="py-3 px-4 border-b bg-muted/30">
             <div className="flex items-center justify-between">
               <TabsList>
@@ -41,21 +89,31 @@ export default function LogsPage() {
               <div className="flex items-center gap-2">
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input type="search" placeholder="Filter logs..." className="pl-8 h-9" />
+                  <Input 
+                    type="search" 
+                    placeholder="Filter logs..." 
+                    className="pl-8 h-9" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
-                <Button variant="outline" size="sm">
-                  <StopCircle className="h-4 w-4 mr-2" />
-                  Pause
+                <Button 
+                  variant={isPaused ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setIsPaused(!isPaused)}
+                >
+                  {isPaused ? <Play className="h-4 w-4 mr-2" /> : <StopCircle className="h-4 w-4 mr-2" />}
+                  {isPaused ? "Resume" : "Pause"}
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => fetchLogs(activeTab)}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleClear}>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Clear
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleExport}>
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -63,30 +121,15 @@ export default function LogsPage() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 p-0 overflow-hidden relative bg-[#1a1b26]">
-            <TabsContent value="app" className="h-full m-0 data-[state=active]:flex flex-col border-0">
-              <div className="flex-1 p-4 font-mono text-sm overflow-auto text-[#a9b1d6] whitespace-pre-wrap">
-                {logData}
+            <div className="h-full p-4 font-mono text-sm overflow-auto text-[#a9b1d6] whitespace-pre-wrap">
+              {displayedLogs || "No logs available."}
+              {!isPaused && (
                 <div className="flex items-center mt-2">
                   <span className="animate-pulse w-2 h-4 bg-white inline-block"></span>
                 </div>
-              </div>
-            </TabsContent>
-            {/* Other tabs would have similar content */}
-            <TabsContent value="nginx" className="h-full m-0 data-[state=active]:flex flex-col border-0">
-              <div className="flex-1 p-4 font-mono text-sm overflow-auto text-[#a9b1d6] whitespace-pre-wrap">
-                [25/Oct/2024:10:15:32 +0000] "GET / HTTP/1.1" 200 154 "-" "Mozilla/5.0"
-              </div>
-            </TabsContent>
-            <TabsContent value="pm2" className="h-full m-0 data-[state=active]:flex flex-col border-0">
-              <div className="flex-1 p-4 font-mono text-sm overflow-auto text-[#a9b1d6] whitespace-pre-wrap">
-                [PM2] App [api] launched (1 instances)
-              </div>
-            </TabsContent>
-            <TabsContent value="system" className="h-full m-0 data-[state=active]:flex flex-col border-0">
-              <div className="flex-1 p-4 font-mono text-sm overflow-auto text-[#a9b1d6] whitespace-pre-wrap">
-                Oct 25 10:15:32 server systemd[1]: Started Nginx Web Server.
-              </div>
-            </TabsContent>
+              )}
+              <div ref={endOfLogsRef} />
+            </div>
           </CardContent>
         </Tabs>
       </Card>
