@@ -9,12 +9,76 @@ import { Users, Plus, Trash2, Key, TerminalSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
+import { useState, useEffect } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "sonner";
+
 export default function AccessPage() {
-  const accounts = [
-    { id: 1, username: "admin", type: "System Admin", access: ["SSH", "FTP", "Panel"], path: "/", status: "Active" },
-    { id: 2, username: "deployer", type: "Limited", access: ["SSH", "FTP"], path: "/var/www/html", status: "Active" },
-    { id: 3, username: "backup_user", type: "Limited", access: ["FTP"], path: "/backups", status: "Inactive" },
-  ];
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    path: "/var/www/apps",
+    protocols: ["FTP", "SSH"]
+  });
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch("/api/access");
+      if (res.ok) setAccounts(await res.json());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      toast.loading("Creating system user...");
+      const res = await fetch("/api/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        toast.dismiss();
+        toast.success("User created successfully!");
+        setIsDialogOpen(false);
+        fetchAccounts();
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create user");
+      }
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error(error.message);
+    }
+  };
+
+  const handleDelete = async (id: string, username: string) => {
+    try {
+      toast.loading(`Deleting ${username}...`);
+      const res = await fetch(`/api/access/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.dismiss();
+        toast.success("User deleted successfully!");
+        fetchAccounts();
+      } else {
+        throw new Error("Failed to delete user");
+      }
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error(error.message);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -23,46 +87,56 @@ export default function AccessPage() {
           <h1 className="text-3xl font-bold tracking-tight">บัญชีผู้ใช้ (Access Management)</h1>
           <p className="text-muted-foreground mt-1">Manage FTP and SSH accounts for server access.</p>
         </div>
-        <Dialog>
-          <DialogTrigger render={<Button />}>
-            <Plus className="mr-2 h-4 w-4" /> สร้างบัญชีใหม่ (Create Account)
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> สร้างบัญชีใหม่ (Create Account)
+            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px] md:max-w-[700px]">
-            <DialogHeader>
-              <DialogTitle>สร้างบัญชี (Create Account)</DialogTitle>
-              <DialogDescription>Add a new system user for SSH or FTP access.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="username">Username</Label>
-                <Input id="username" placeholder="e.g. webuser1" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" placeholder="Enter secure password" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="path">Home Directory (Path)</Label>
-                <Input id="path" defaultValue="/var/www/html" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Access Protocols</Label>
-                <div className="flex flex-col gap-2 mt-2">
-                  <Label className="flex items-center gap-2 font-normal cursor-pointer">
-                    <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" defaultChecked />
-                    FTP Access
-                  </Label>
-                  <Label className="flex items-center gap-2 font-normal cursor-pointer">
-                    <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" defaultChecked />
-                    SSH Access (Jailed Environment)
-                  </Label>
+            <form onSubmit={handleCreate}>
+              <DialogHeader>
+                <DialogTitle>สร้างบัญชี (Create Account)</DialogTitle>
+                <DialogDescription>Add a new system user for SSH or FTP access.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input id="username" placeholder="e.g. webuser1" required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input id="password" type="password" placeholder="Enter secure password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="path">Home Directory (Path)</Label>
+                  <Input id="path" value={formData.path} onChange={e => setFormData({...formData, path: e.target.value})} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Access Protocols</Label>
+                  <div className="flex flex-col gap-2 mt-2">
+                    <Label className="flex items-center gap-2 font-normal cursor-pointer">
+                      <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" checked={formData.protocols.includes("FTP")} onChange={(e) => {
+                        const newProtocols = e.target.checked ? [...formData.protocols, "FTP"] : formData.protocols.filter(p => p !== "FTP");
+                        setFormData({...formData, protocols: newProtocols});
+                      }} />
+                      FTP Access
+                    </Label>
+                    <Label className="flex items-center gap-2 font-normal cursor-pointer">
+                      <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" checked={formData.protocols.includes("SSH")} onChange={(e) => {
+                        const newProtocols = e.target.checked ? [...formData.protocols, "SSH"] : formData.protocols.filter(p => p !== "SSH");
+                        setFormData({...formData, protocols: newProtocols});
+                      }} />
+                      SSH Access (Standard User)
+                    </Label>
+                  </div>
                 </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" type="button">ยกเลิก (Cancel)</Button>
-              <Button type="submit">สร้างบัญชี (Create)</Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)}>ยกเลิก (Cancel)</Button>
+                <Button type="submit">สร้างบัญชี (Create)</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -81,79 +155,55 @@ export default function AccessPage() {
                 <TableHead>Protocols</TableHead>
                 <TableHead>Home Directory</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right w-[150px]">Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {accounts.map((acc) => (
-                <TableRow key={acc.id}>
-                  <TableCell className="font-medium flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold uppercase">
-                      {acc.username.substring(0, 2)}
-                    </div>
-                    {acc.username}
-                  </TableCell>
-                  <TableCell>{acc.type}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {acc.access.map((proto) => (
-                        <Badge key={proto} variant="secondary" className="font-mono text-xs">
-                          {proto}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">{acc.path}</TableCell>
-                  <TableCell>
-                    <Badge variant={acc.status === "Active" ? "default" : "outline"} className={acc.status === "Active" ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 shadow-none border-0" : ""}>
-                      {acc.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Dialog>
-                        <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Change Password" />}>
+              {accounts.map((acc) => {
+                const protocols = JSON.parse(acc.access || '[]');
+                return (
+                  <TableRow key={acc.id}>
+                    <TableCell className="font-medium flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold uppercase">
+                        {acc.username.substring(0, 2)}
+                      </div>
+                      {acc.username}
+                    </TableCell>
+                    <TableCell>System User</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {protocols.map((proto: string) => (
+                          <Badge key={proto} variant="secondary" className="font-mono text-xs">
+                            {proto === "SSH" ? <TerminalSquare className="w-3 h-3 mr-1 inline" /> : null}
+                            {proto}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {acc.path}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={acc.status === "active" ? "default" : "outline"} className={acc.status === "active" ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : ""}>
+                        {acc.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" size="icon" title="Change Password">
                           <Key className="h-4 w-4" />
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px]">
-                          <DialogHeader>
-                            <DialogTitle>Change Password</DialogTitle>
-                            <DialogDescription>
-                              Update the password for <strong>{acc.username}</strong>.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                              <Label htmlFor={`new-pwd-${acc.id}`}>New Password</Label>
-                              <Input id={`new-pwd-${acc.id}`} type="password" placeholder="Enter new password" />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline" type="button">ยกเลิก (Cancel)</Button>
-                            <Button type="submit">บันทึก (Save)</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-
-                      <Dialog>
-                        <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete Account" />}>
-                          <Trash2 className="h-4 w-4" />
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px]">
-                          <DialogHeader>
-                            <DialogTitle className="text-destructive">Delete Account</DialogTitle>
-                            <DialogDescription>
-                              Are you sure you want to delete the user <strong>{acc.username}</strong>? They will lose all access to the server.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <DialogFooter className="mt-4">
-                            <Button variant="outline" type="button">ยกเลิก (Cancel)</Button>
-                            <Button variant="destructive" type="button">ลบ (Delete)</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </TableCell>
+                        </Button>
+                        <ConfirmDialog
+                          title="Delete User"
+                          description={`Are you sure you want to delete ${acc.username}? This will remove their OS access.`}
+                          onConfirm={() => handleDelete(acc.id, acc.username)}
+                        >
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </ConfirmDialog>
+                      </div>
+                    </TableCell>
                 </TableRow>
               ))}
             </TableBody>

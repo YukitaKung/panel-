@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AppWindow, Database, FileCode2, Globe, HardDrive, Settings, SquareTerminal, Server, FolderCode, Clock, Network, Users, Terminal, LogOut, Key, BookOpen } from "lucide-react";
+import { Activity, AppWindow, Database, FileCode2, Globe, HardDrive, Settings, SquareTerminal, Server, FolderCode, Clock, Network, Users, Terminal, LogOut, Key, BookOpen, ShieldCheck } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -41,6 +41,11 @@ const items = [
     title: "ฐานข้อมูล (Databases)",
     url: "/databases",
     icon: Database,
+  },
+  {
+    title: "ความปลอดภัย (SSL/TLS)",
+    url: "/ssl",
+    icon: ShieldCheck,
   },
   {
     title: "บัญชีผู้ใช้ (FTP / SSH)",

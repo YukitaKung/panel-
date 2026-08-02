@@ -25,6 +25,8 @@ model Subdomain {
   domain    String   @unique
   target    String
   status    String   @default("active")
+  sslEnabled Boolean @default(false)
+  sslStatus  String  @default("none") // none, active, error
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -57,6 +59,16 @@ model ApiKey {
   name      String
   key       String   @unique
   lastUsedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SystemUser {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  access    String   // JSON string of access types ["SSH", "FTP"]
+  path      String   // Home directory
+  status    String   @default("active") // active, inactive
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -17,6 +17,8 @@ interface Subdomain {
   domain: string;
   type: "php" | "node";
   port: string | null;
+  sslEnabled?: boolean;
+  sslStatus?: string;
   createdAt: string;
 }
 
@@ -31,6 +33,7 @@ export default function SubdomainsPage() {
   const [newDomain, setNewDomain] = useState("");
   const [newType, setNewType] = useState<"php" | "node">("php");
   const [newPort, setNewPort] = useState("");
+  const [autoSsl, setAutoSsl] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const openCreateDialog = () => {
@@ -38,6 +41,7 @@ export default function SubdomainsPage() {
     setNewDomain("");
     setNewType("php");
     setNewPort("");
+    setAutoSsl(true);
     setError(null);
     setIsDialogOpen(true);
   };
@@ -93,6 +97,23 @@ export default function SubdomainsPage() {
       setIsDialogOpen(false);
       fetchSubdomains();
       toast.success(`Subdomain ${newDomain} ${isEditMode ? "updated" : "created"} successfully!`);
+
+      // Trigger Auto-SSL if checked (only on create for now, or if it doesn't have SSL yet)
+      if (autoSsl) {
+        toast.loading(`Issuing SSL for ${newDomain}...`, { id: 'ssl-toast' });
+        const sslRes = await fetch("/api/ssl", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain: newDomain })
+        });
+        if (sslRes.ok) {
+          toast.success(`SSL issued successfully for ${newDomain}!`, { id: 'ssl-toast' });
+          fetchSubdomains();
+        } else {
+          toast.error(`Failed to issue SSL for ${newDomain}`, { id: 'ssl-toast' });
+        }
+      }
+
     } catch (e: any) {
       setError(e.message);
       toast.error(e.message);
@@ -215,6 +236,17 @@ export default function SubdomainsPage() {
                     </div>
                   </div>
                 )}
+                
+                <div className="flex items-center gap-2 mt-2 p-3 bg-muted/30 border rounded-md">
+                  <input 
+                    type="checkbox" 
+                    id="autoSsl" 
+                    checked={autoSsl} 
+                    onChange={e => setAutoSsl(e.target.checked)}
+                    className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  <Label htmlFor="autoSsl" className="font-medium cursor-pointer">Auto Issue SSL (HTTPS)</Label>
+                </div>
               </div>
               
               <DialogFooter>
