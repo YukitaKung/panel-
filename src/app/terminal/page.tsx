@@ -31,6 +31,11 @@ export default function TerminalPage() {
   const endOfTerminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const stripAnsi = (str: string) => {
+    // Regular expression to match ANSI escape sequences
+    return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+  };
+
   const scrollToBottom = () => {
     endOfTerminalRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -78,14 +83,14 @@ export default function TerminalPage() {
         setHistory(prev => [...prev, {
           id: Math.random().toString(36).substring(7),
           type: "output",
-          text: data.stdout
+          text: stripAnsi(data.stdout)
         }]);
       }
       if (data.stderr) {
         setHistory(prev => [...prev, {
           id: Math.random().toString(36).substring(7),
           type: "error",
-          text: data.stderr
+          text: stripAnsi(data.stderr)
         }]);
       }
     } catch (error: any) {
