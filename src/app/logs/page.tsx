@@ -12,8 +12,10 @@ export default function LogsPage() {
   const [activeTab, setActiveTab] = useState("app");
   const [logs, setLogs] = useState<{ [key: string]: string }>({});
   const [isPaused, setIsPaused] = useState(false);
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const endOfLogsRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   const fetchLogs = async (type: string) => {
     try {
@@ -41,12 +43,21 @@ export default function LogsPage() {
     return () => clearInterval(interval);
   }, [activeTab, isPaused]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom only if user hasn't manually scrolled up
   useEffect(() => {
-    if (!isPaused) {
+    if (isAutoScroll && !isPaused) {
       endOfLogsRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [logs, activeTab, isPaused]);
+  }, [logs, activeTab, isPaused, isAutoScroll]);
+
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    
+    // If user is within 50px of the bottom, enable auto-scroll, otherwise disable it
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setIsAutoScroll(isAtBottom);
+  };
 
   const handleClear = () => {
     setLogs(prev => ({ ...prev, [activeTab]: "" }));
@@ -121,7 +132,11 @@ export default function LogsPage() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 p-0 overflow-hidden relative bg-[#1a1b26]">
-            <div className="h-full p-4 font-mono text-sm overflow-auto text-[#a9b1d6] whitespace-pre-wrap">
+            <div 
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="h-full p-4 font-mono text-sm overflow-auto text-[#a9b1d6] whitespace-pre-wrap"
+            >
               {displayedLogs || "No logs available."}
               {!isPaused && (
                 <div className="flex items-center mt-2">
