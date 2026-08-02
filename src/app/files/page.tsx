@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { 
   Folder, File, FileText, FileCode2, FileImage, 
-  Trash2, ChevronRight, Home, RefreshCw, Plus, FilePlus, FolderPlus
+  Trash2, ChevronRight, Home, RefreshCw, Plus, FilePlus, FolderPlus, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,8 @@ export default function FilesPage() {
   const [createType, setCreateType] = useState<"file" | "folder">("file");
   const [newName, setNewName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchFiles = async (path: string) => {
     setIsLoading(true);
@@ -113,6 +115,36 @@ export default function FilesPage() {
       fetchFiles(currentPath);
     } catch (err: any) {
       toast.error(err.message);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("basePath", currentPath);
+
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/files/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Upload failed");
+      }
+      
+      toast.success("File uploaded successfully");
+      fetchFiles(currentPath);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload file");
+    } finally {
+      setIsLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -193,6 +225,16 @@ export default function FilesPage() {
           <Button variant="outline" onClick={() => fetchFiles(currentPath)}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
+          </Button>
+          <input 
+            type="file" 
+            ref={fileInputRef}
+            className="hidden" 
+            onChange={handleFileUpload} 
+          />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="w-4 h-4 mr-2" />
+            Upload File
           </Button>
           <Button 
             variant="outline" 
