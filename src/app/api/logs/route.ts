@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       case "app":
         // Fetch PM2 logs for hostpanel
         try {
-          const { stdout, stderr } = await execAsync(`pm2 logs hostpanel --nostream --lines 200`);
+          const { stdout, stderr } = await execAsync(`pm2 logs hostpanel --nostream --lines 100`);
           logs = stdout + "\n" + stderr;
         } catch (e: any) {
           logs = e.stdout + "\n" + e.stderr;
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       case "nginx":
         // Fetch Nginx access and error logs
         try {
-          const { stdout } = await execAsync(`sudo tail -n 200 /var/log/nginx/access.log`);
+          const { stdout } = await execAsync(`sudo tail -n 100 /var/log/nginx/access.log`);
           logs = stdout;
         } catch (e: any) {
           logs = "Could not fetch Nginx logs. " + e.message;
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       case "pm2":
         // Fetch global PM2 logs
         try {
-          const { stdout, stderr } = await execAsync(`pm2 logs --nostream --lines 200`);
+          const { stdout, stderr } = await execAsync(`pm2 logs --nostream --lines 100`);
           logs = stdout + "\n" + stderr;
         } catch (e: any) {
           logs = e.stdout + "\n" + e.stderr;
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       case "system":
         // Fetch Ubuntu syslog
         try {
-          const { stdout } = await execAsync(`sudo tail -n 200 /var/log/syslog`);
+          const { stdout } = await execAsync(`sudo tail -n 100 /var/log/syslog`);
           logs = stdout;
         } catch (e: any) {
           logs = "Could not fetch system logs. " + e.message;

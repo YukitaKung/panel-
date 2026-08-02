@@ -32,16 +32,20 @@ export default function LogsPage() {
   };
 
   useEffect(() => {
-    fetchLogs(activeTab);
+    // Only fetch immediately on tab change or if we are auto-scrolling
+    if (isAutoScroll && !isPaused) {
+      fetchLogs(activeTab);
+    }
     
-    if (isPaused) return;
+    // If paused manually or user scrolled up, stop polling entirely
+    if (isPaused || !isAutoScroll) return;
 
     const interval = setInterval(() => {
       fetchLogs(activeTab);
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [activeTab, isPaused]);
+  }, [activeTab, isPaused, isAutoScroll]);
 
   // Auto-scroll to bottom only if user hasn't manually scrolled up
   useEffect(() => {
