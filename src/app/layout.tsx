@@ -38,7 +38,7 @@ export default function RootLayout({
       className={`${lineSeed.variable} antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <LayoutWrapper>
             {children}

@@ -15,7 +15,7 @@ export default function ApiDocsPage() {
 
   const CodeBlock = ({ code, language = "json" }: { code: string, language?: string }) => (
     <div className="relative group mt-2">
-      <pre className="bg-[#1a1b26] p-4 rounded-md overflow-x-auto text-sm font-mono text-[#a9b1d6] border border-border/50">
+      <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm font-mono text-foreground border border-border/50">
         <code>{code}</code>
       </pre>
       <Button 
