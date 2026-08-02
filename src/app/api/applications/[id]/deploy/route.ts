@@ -98,6 +98,12 @@ export async function POST(
             // Fallback to start if restart fails because it doesn't exist in PM2 list
             await streamCommand(`pm2 start "${pm2Name}"`, appDir);
           }
+
+          // Update status in DB
+          await db.application.update({
+            where: { id: app.id },
+            data: { status: "running" },
+          });
           
           send(`[SUCCESS] Action completed successfully!`);
           controller.close();

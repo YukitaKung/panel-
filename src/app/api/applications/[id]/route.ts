@@ -42,7 +42,13 @@ export async function PUT(
       return NextResponse.json({ error: "Failed to execute action on PM2" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, action: body.action });
+    const newStatus = body.action === "stop" ? "stopped" : "running";
+    await db.application.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+
+    return NextResponse.json({ success: true, action: body.action, status: newStatus });
   } catch (error) {
     return NextResponse.json({ error: "Failed to control application" }, { status: 500 });
   }
