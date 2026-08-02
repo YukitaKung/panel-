@@ -177,7 +177,7 @@ export default function BackupsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Backup Type</Label>
-                    <Select value={newBackupType} onValueChange={setNewBackupType}>
+                    <Select value={newBackupType} onValueChange={(val) => val && setNewBackupType(val)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
