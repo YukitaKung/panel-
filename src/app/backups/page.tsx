@@ -154,11 +154,9 @@ export default function BackupsPage() {
         </div>
         <div className="flex gap-2">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Backup
-              </Button>
+            <DialogTrigger render={<Button />}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Backup
             </DialogTrigger>
             <DialogContent>
               <form onSubmit={handleCreate}>
