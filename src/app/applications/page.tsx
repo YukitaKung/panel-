@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   AppWindow, Play, Square, RotateCw, GitBranch,
   Terminal, Settings, Trash2, Plus, Package, FolderCode, FileCode2,
-  RefreshCw, Activity
+  RefreshCw, Activity, CloudDownload, TerminalSquare, Box
 } from "lucide-react";
 import { 
   DropdownMenu,
@@ -128,6 +128,69 @@ export default function ApplicationsPage() {
     }
   };
 
+  const handleQuickAction = async (id: string, action: "start" | "stop" | "restart") => {
+    try {
+      const res = await fetch(`/api/applications/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        toast.success(`Action ${action} executed successfully`);
+        fetchApplications();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || `Failed to execute ${action}`);
+      }
+    } catch (error) {
+      toast.error(`Failed to execute ${action}`);
+    }
+  };
+
+  const handleStreamingAction = async (id: string, action: "redeploy" | "npm_install" | "npm_build") => {
+    setIsDialogOpen(true);
+    setIsDeploying(true);
+    setIsSubmitting(true);
+    setDeployLogs(`Starting action: ${action}...\n`);
+    
+    try {
+      const res = await fetch(`/api/applications/${id}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setDeployLogs((prev) => prev + `\nError: ${err.error || "Failed to start action"}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            setDeployLogs((prev) => prev + decoder.decode(value));
+          }
+        }
+        
+        fetchApplications();
+      }
+    } catch (error) {
+      console.error(`Failed to execute ${action}:`, error);
+      setDeployLogs((prev) => prev + `\nNetwork error or failed to execute action.`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
   return (
     <div className="space-y-6">
       <ConfirmDialog 
@@ -158,9 +221,9 @@ export default function ApplicationsPage() {
               <div className="py-4 space-y-4">
                 <div className="flex items-center text-sm font-medium">
                   {isSubmitting ? (
-                    <><RefreshCw className="w-4 h-4 mr-2 animate-spin text-primary" /> Deploying...</>
+                    <><RefreshCw className="w-4 h-4 mr-2 animate-spin text-primary" /> Processing...</>
                   ) : (
-                    <><Activity className="w-4 h-4 mr-2 text-green-500" /> Deployment Process Finished</>
+                    <><Activity className="w-4 h-4 mr-2 text-green-500" /> Process Finished</>
                   )}
                 </div>
                 <div className="bg-white border border-gray-200 rounded-md p-4 text-xs font-mono h-[400px] overflow-y-auto whitespace-pre-wrap text-black shadow-inner">
@@ -322,18 +385,34 @@ export default function ApplicationsPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem>
+                    <DropdownMenuLabel>Process Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => handleQuickAction(app.id, "start")}>
                       <Play className="mr-2 h-4 w-4 text-emerald-500" />
                       Start
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleQuickAction(app.id, "stop")}>
                       <Square className="mr-2 h-4 w-4 text-rose-500" />
                       Stop
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleQuickAction(app.id, "restart")}>
                       <RotateCw className="mr-2 h-4 w-4 text-amber-500" />
                       Restart
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>System Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => handleStreamingAction(app.id, "redeploy")}>
+                      <CloudDownload className="mr-2 h-4 w-4 text-blue-500" />
+                      Redeploy
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStreamingAction(app.id, "npm_install")}>
+                      <Box className="mr-2 h-4 w-4 text-purple-500" />
+                      npm install
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStreamingAction(app.id, "npm_build")}>
+                      <TerminalSquare className="mr-2 h-4 w-4 text-indigo-500" />
+                      npm run build
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
