@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Key, Copy, Trash2, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface ApiKey {
   id: string;
@@ -22,6 +23,8 @@ export default function ApiKeysPage() {
   const [newName, setNewName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
+  const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false);
+  const [keyToRevoke, setKeyToRevoke] = useState<string | null>(null);
 
   useEffect(() => {
     fetchKeys();
@@ -70,8 +73,14 @@ export default function ApiKeysPage() {
     }
   };
 
-  const handleRevoke = async (id: string) => {
-    if (!confirm("Are you sure you want to revoke this API key? Any applications using it will immediately stop working.")) return;
+  const handleRevokeClick = (id: string) => {
+    setKeyToRevoke(id);
+    setRevokeConfirmOpen(true);
+  };
+
+  const confirmRevoke = async () => {
+    if (!keyToRevoke) return;
+    const id = keyToRevoke;
 
     try {
       const res = await fetch(`/api/apikeys?id=${id}`, {
@@ -87,12 +96,38 @@ export default function ApiKeysPage() {
       }
     } catch (error) {
       toast.error("Failed to revoke API key");
+    } finally {
+      setKeyToRevoke(null);
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand("copy");
+          toast.success("Copied to clipboard");
+        } catch (err) {
+          toast.error("Failed to copy text");
+        } finally {
+          textArea.remove();
+        }
+      }
+    } catch (err) {
+      toast.error("Failed to copy text");
+    }
   };
 
   const maskKey = (key: string) => {
@@ -223,7 +258,7 @@ export default function ApiKeysPage() {
                       )}
                     </div>
                     <div className="col-span-1 text-right">
-                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleRevoke(key.id)}>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleRevokeClick(key.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -234,6 +269,15 @@ export default function ApiKeysPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={revokeConfirmOpen}
+        onOpenChange={setRevokeConfirmOpen}
+        title="Revoke API Key"
+        description="Are you sure you want to revoke this API key? Any scripts or applications currently using this key will immediately be denied access."
+        confirmText="Yes, revoke it"
+        onConfirm={confirmRevoke}
+      />
     </div>
   );
 }

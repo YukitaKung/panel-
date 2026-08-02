@@ -8,9 +8,34 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export default function ApiDocsPage() {
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+      } else {
+        // Fallback for non-HTTPS environments
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand("copy");
+          toast.success("Copied to clipboard");
+        } catch (err) {
+          toast.error("Failed to copy text");
+        } finally {
+          textArea.remove();
+        }
+      }
+    } catch (err) {
+      toast.error("Failed to copy text");
+    }
   };
 
   const CodeBlock = ({ code, language = "json" }: { code: string, language?: string }) => (
