@@ -91,11 +91,11 @@ export default function CronPage() {
                 <TableRow key={cron.id}>
                   <TableCell>
                     <div className="flex items-center gap-1 sm:gap-2 font-mono text-xs">
-                      <span className="w-6 text-center bg-muted/50 rounded-md py-0.5">{cron.minute}</span>
-                      <span className="w-6 text-center bg-muted/50 rounded-md py-0.5">{cron.hour}</span>
-                      <span className="w-6 text-center bg-muted/50 rounded-md py-0.5">{cron.day}</span>
-                      <span className="w-6 text-center bg-muted/50 rounded-md py-0.5">{cron.month}</span>
-                      <span className="w-6 text-center bg-muted/50 rounded-md py-0.5">{cron.weekday}</span>
+                      <span className="w-6 text-center bg-muted/50 rounded-none py-0.5">{cron.minute}</span>
+                      <span className="w-6 text-center bg-muted/50 rounded-none py-0.5">{cron.hour}</span>
+                      <span className="w-6 text-center bg-muted/50 rounded-none py-0.5">{cron.day}</span>
+                      <span className="w-6 text-center bg-muted/50 rounded-none py-0.5">{cron.month}</span>
+                      <span className="w-6 text-center bg-muted/50 rounded-none py-0.5">{cron.weekday}</span>
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-sm max-w-[300px] truncate" title={cron.command}>
@@ -113,7 +113,7 @@ export default function CronPage() {
                             <DialogTitle>Run Cron Job</DialogTitle>
                             <DialogDescription>
                               Are you sure you want to run this task immediately?
-                              <div className="mt-4 p-3 bg-muted/50 rounded-md font-mono text-xs text-foreground overflow-x-auto whitespace-nowrap">
+                              <div className="mt-4 p-3 bg-muted/50 rounded-none font-mono text-xs text-foreground overflow-x-auto whitespace-nowrap">
                                 {cron.command}
                               </div>
                             </DialogDescription>

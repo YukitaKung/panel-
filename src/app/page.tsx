@@ -113,7 +113,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center text-sm text-muted-foreground border border-dashed rounded-lg p-6 justify-center">
+              <div className="flex items-center text-sm text-muted-foreground border border-dashed rounded-none p-6 justify-center">
                 <AppWindow className="h-5 w-5 mr-2" /> 
                 <p>โปรดไปที่หน้า "แอพพลิเคชั่น" เพื่อดูข้อมูลแบบละเอียด</p>
               </div>
@@ -129,7 +129,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 mr-3 self-start"></div>
+                <div className="w-2 h-2 rounded-none bg-emerald-500 mt-1.5 mr-3 self-start"></div>
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-medium leading-none">System Panel Started</p>
                   <p className="text-xs text-muted-foreground">Just now</p>

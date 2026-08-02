@@ -151,12 +151,12 @@ export default function TerminalPage() {
         </div>
       </div>
 
-      <Card className="flex-1 bg-[#1a1b26] border-[#1a1b26] rounded-xl overflow-hidden shadow-xl flex flex-col cursor-text" onClick={() => inputRef.current?.focus()}>
+      <Card className="flex-1 bg-[#1a1b26] border-[#1a1b26] rounded-none overflow-hidden shadow-xl flex flex-col cursor-text" onClick={() => inputRef.current?.focus()}>
         <div className="h-10 bg-[#16161e] border-b border-[#292e42] flex items-center px-4 shrink-0">
           <div className="flex gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#f7768e]"></div>
-            <div className="w-3 h-3 rounded-full bg-[#e0af68]"></div>
-            <div className="w-3 h-3 rounded-full bg-[#9ece6a]"></div>
+            <div className="w-3 h-3 rounded-none bg-[#f7768e]"></div>
+            <div className="w-3 h-3 rounded-none bg-[#e0af68]"></div>
+            <div className="w-3 h-3 rounded-none bg-[#9ece6a]"></div>
           </div>
           <div className="flex-1 text-center text-xs text-[#a9b1d6] font-medium flex items-center justify-center gap-2">
             <TerminalIcon className="h-3 w-3" />

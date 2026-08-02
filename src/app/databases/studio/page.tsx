@@ -232,7 +232,7 @@ function StudioContent() {
             )}
 
             {uploadMessage && (
-              <div className="p-4 m-4 bg-green-500/10 text-green-500 rounded-md text-sm">
+              <div className="p-4 m-4 bg-green-500/10 text-green-500 rounded-none text-sm">
                 {uploadMessage}
               </div>
             )}

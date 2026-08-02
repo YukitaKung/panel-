@@ -175,7 +175,7 @@ export default function SubdomainsPage() {
               
               <div className="grid gap-4 py-4">
                 {error && (
-                  <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md flex items-center">
+                  <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-none flex items-center">
                     <AlertCircle className="w-4 h-4 mr-2" />
                     {error}
                   </div>
@@ -217,7 +217,7 @@ export default function SubdomainsPage() {
                 </div>
 
                 {newType === "php" ? (
-                  <div className="bg-muted p-3 rounded-md text-xs text-muted-foreground">
+                  <div className="bg-muted p-3 rounded-none text-xs text-muted-foreground">
                     <span className="font-semibold text-foreground">Info:</span> A new web root folder will automatically be created at <code className="bg-background px-1 rounded">/var/www/{newDomain || "domain"}</code>. You can upload your HTML/PHP files there.
                   </div>
                 ) : (
@@ -237,7 +237,7 @@ export default function SubdomainsPage() {
                   </div>
                 )}
                 
-                <div className="flex items-center gap-2 mt-2 p-3 bg-muted/30 border rounded-md">
+                <div className="flex items-center gap-2 mt-2 p-3 bg-muted/30 border rounded-none">
                   <input 
                     type="checkbox" 
                     id="autoSsl" 

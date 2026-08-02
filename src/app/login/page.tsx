@@ -13,7 +13,7 @@ function LoginContent() {
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="flex flex-col items-center mb-8">
-        <div className="bg-primary/10 p-4 rounded-full mb-4">
+        <div className="bg-primary/10 p-4 rounded-none mb-4">
           <Server className="h-10 w-10 text-primary" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight">HostPanel</h1>
@@ -29,7 +29,7 @@ function LoginContent() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {error && (
-            <div className="bg-destructive/15 text-destructive p-3 rounded-md flex items-center text-sm font-medium">
+            <div className="bg-destructive/15 text-destructive p-3 rounded-none flex items-center text-sm font-medium">
               <ShieldAlert className="h-4 w-4 mr-2" />
               {error === "Unauthorized" && "Access Denied: Your Discord ID is not authorized."}
               {error === "OAuthFailed" && "Failed to authenticate with Discord."}

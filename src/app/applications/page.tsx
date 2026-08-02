@@ -247,7 +247,7 @@ export default function ApplicationsPage() {
                     <><Activity className="w-4 h-4 mr-2 text-green-500" /> Process Finished</>
                   )}
                 </div>
-                <div className="bg-white border border-gray-200 rounded-md p-4 text-xs font-mono h-[400px] overflow-y-auto whitespace-pre-wrap text-black shadow-inner">
+                <div className="bg-white border border-gray-200 rounded-none p-4 text-xs font-mono h-[400px] overflow-y-auto whitespace-pre-wrap text-black shadow-inner">
                   {deployLogs || "Connecting..."}
                   <div ref={logsEndRef} />
                 </div>
@@ -467,7 +467,7 @@ export default function ApplicationsPage() {
                     app.status === "error" ? "bg-rose-500/10 text-rose-500" :
                     "bg-gray-500/10 text-gray-500"
                   }>
-                    {app.status === "running" && <span className="mr-1.5 h-2 w-2 rounded-full bg-emerald-500"></span>}
+                    {app.status === "running" && <span className="mr-1.5 h-2 w-2 rounded-none bg-emerald-500"></span>}
                     {app.status === "deploying" && <RotateCw className="mr-1.5 h-3 w-3 animate-spin" />}
                     {app.status}
                   </Badge>

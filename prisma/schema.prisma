@@ -72,3 +72,24 @@ model SystemUser {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Backup {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // Server, Database, Application
+  size      String
+  status    String   @default("Completed")
+  path      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   @default("info") // info, success, error
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

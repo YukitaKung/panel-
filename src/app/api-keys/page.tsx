@@ -166,7 +166,7 @@ export default function ApiKeysPage() {
               </div>
               
               {newlyCreatedKey && (
-                <div className="mt-4 p-4 rounded-md bg-green-500/10 border border-green-500/20">
+                <div className="mt-4 p-4 rounded-none bg-green-500/10 border border-green-500/20">
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
                     <div className="space-y-2">
@@ -225,14 +225,14 @@ export default function ApiKeysPage() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="animate-spin rounded-none h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : keys.length === 0 ? (
             <div className="text-center p-8 text-muted-foreground">
               No API keys generated yet.
             </div>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
+            <div className="rounded-none border overflow-x-auto">
               <div className="min-w-[800px]">
                 <div className="grid grid-cols-12 gap-4 p-4 font-medium border-b bg-muted/50 text-sm">
                   <div className="col-span-3">Name</div>

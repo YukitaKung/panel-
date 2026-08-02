@@ -18,6 +18,11 @@ export default function AccessPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [passwordUserId, setPasswordUserId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -74,6 +79,33 @@ export default function AccessPage() {
         fetchAccounts();
       } else {
         throw new Error("Failed to delete user");
+      }
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error(error.message);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordUserId || !newPassword) return;
+
+    try {
+      toast.loading("Updating password...");
+      const res = await fetch(`/api/access/${passwordUserId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword })
+      });
+      if (res.ok) {
+        toast.dismiss();
+        toast.success("Password updated successfully!");
+        setIsPasswordDialogOpen(false);
+        setNewPassword("");
+        setPasswordUserId(null);
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update password");
       }
     } catch (error: any) {
       toast.dismiss();
@@ -165,7 +197,7 @@ export default function AccessPage() {
                 return (
                   <TableRow key={acc.id}>
                     <TableCell className="font-medium flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold uppercase">
+                      <div className="h-8 w-8 rounded-none bg-primary/10 text-primary flex items-center justify-center font-bold uppercase">
                         {acc.username.substring(0, 2)}
                       </div>
                       {acc.username}
@@ -191,7 +223,15 @@ export default function AccessPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" title="Change Password">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Change Password"
+                          onClick={() => {
+                            setPasswordUserId(acc.id);
+                            setIsPasswordDialogOpen(true);
+                          }}
+                        >
                           <Key className="h-4 w-4" />
                         </Button>
                         <Button 
@@ -229,6 +269,35 @@ export default function AccessPage() {
           if (user) handleDelete(user.id, user.username);
         }}
       />
+
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleUpdatePassword}>
+            <DialogHeader>
+              <DialogTitle>Change Password</DialogTitle>
+              <DialogDescription>
+                Update the password for this system user.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input 
+                  id="new-password" 
+                  type="password" 
+                  required 
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => setIsPasswordDialogOpen(false)}>Cancel</Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

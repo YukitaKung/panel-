@@ -152,7 +152,7 @@ export default function SSLPage() {
         </CardContent>
       </Card>
       
-      <div className="text-xs text-muted-foreground flex items-center gap-2 bg-muted/50 p-4 rounded-md border">
+      <div className="text-xs text-muted-foreground flex items-center gap-2 bg-muted/50 p-4 rounded-none border">
         <AlertCircle className="w-4 h-4 text-primary" />
         Certificates are issued via Let's Encrypt and automatically renewed via system cron. Ensure your domain points to this server's IP before issuing.
       </div>

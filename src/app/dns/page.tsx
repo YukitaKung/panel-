@@ -111,7 +111,7 @@ export default function DNSPage() {
                 <TableRow key={record.id}>
                   <TableCell className="font-medium">{record.name}</TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium ring-1 ring-inset ring-border">
+                    <span className="inline-flex items-center rounded-none bg-muted px-2 py-1 text-xs font-medium ring-1 ring-inset ring-border">
                       {record.type}
                     </span>
                   </TableCell>

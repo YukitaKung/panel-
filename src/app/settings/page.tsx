@@ -93,7 +93,7 @@ export default function SettingsPage() {
               <div className="flex justify-between items-center py-2">
                 <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-4 w-4"/> Timezone</span>
                 <select 
-                  className="bg-muted text-foreground border border-border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-[200px]"
+                  className="bg-muted text-foreground border border-border rounded-none px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-[200px]"
                   value={settings?.timezone || ""}
                   onChange={handleTimezoneChange}
                 >

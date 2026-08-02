@@ -66,7 +66,7 @@ export function FileEditor({ filePath, initialContent, onClose, onSave }: FileEd
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-6xl h-[85vh] bg-card border rounded-lg shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-6xl h-[85vh] bg-card border rounded-none shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="h-14 border-b flex items-center justify-between px-4 bg-muted/30">
           <div className="flex items-center space-x-2 truncate">
