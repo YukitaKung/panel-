@@ -17,6 +17,7 @@ export default function AccessPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -88,11 +89,11 @@ export default function AccessPage() {
           <p className="text-muted-foreground mt-1">Manage FTP and SSH accounts for server access.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
+          <DialogTrigger render={
             <Button>
               <Plus className="mr-2 h-4 w-4" /> สร้างบัญชีใหม่ (Create Account)
             </Button>
-          </DialogTrigger>
+          } />
           <DialogContent className="sm:max-w-[600px] md:max-w-[700px]">
             <form onSubmit={handleCreate}>
               <DialogHeader>
@@ -193,15 +194,14 @@ export default function AccessPage() {
                         <Button variant="ghost" size="icon" title="Change Password">
                           <Key className="h-4 w-4" />
                         </Button>
-                        <ConfirmDialog
-                          title="Delete User"
-                          description={`Are you sure you want to delete ${acc.username}? This will remove their OS access.`}
-                          onConfirm={() => handleDelete(acc.id, acc.username)}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => setConfirmDelete(acc.id)}
                         >
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </ConfirmDialog>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                 </TableRow>
@@ -218,6 +218,17 @@ export default function AccessPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+        title="Delete User"
+        description="Are you sure you want to delete this user? This will remove their OS access."
+        onConfirm={() => {
+          const user = accounts.find(a => a.id === confirmDelete);
+          if (user) handleDelete(user.id, user.username);
+        }}
+      />
     </div>
   );
 }
