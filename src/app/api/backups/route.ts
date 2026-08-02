@@ -84,12 +84,14 @@ export async function POST(request: Request) {
             throw new Error("No valid paths to backup based on the selected options.");
           }
 
-          await execAsync(`sudo tar -czf ${fullPath} ${validPaths.join(" ")}`);
+          const excludeFlags = "--exclude='node_modules' --exclude='.next' --exclude='.cache'";
+          await execAsync(`sudo tar ${excludeFlags} -czf ${fullPath} ${validPaths.join(" ")}`);
           
         } else {
           // Standard backup (legacy/simple dialog if we still support it, or default)
           if (targetPath) {
-             await execAsync(`sudo tar -czf ${fullPath} ${targetPath}`);
+             const excludeFlags = "--exclude='node_modules' --exclude='.next' --exclude='.cache'";
+             await execAsync(`sudo tar ${excludeFlags} -czf ${fullPath} ${targetPath}`);
           } else {
              throw new Error("No target path provided for standard backup");
           }

@@ -45,8 +45,21 @@ export async function POST(
         if (backup.type === "Full System" || backup.type === "Advanced") {
           try {
             await execAsync("sudo systemctl reload nginx");
+            
+            // Because we excluded node_modules and .next, we need to rebuild the apps
+            const apps = await db.application.findMany();
+            for (const app of apps) {
+              try {
+                const appDir = `/var/www/apps/${app.id}`;
+                // Check if directory exists
+                await fs.access(appDir);
+                await execAsync(`cd ${appDir} && npm install && npm run build`);
+              } catch (e) {
+                console.error(`Failed to rebuild app ${app.name} after restore:`, e);
+              }
+            }
+
             await execAsync("pm2 update"); // Updates pm2 and reloads saved states if pm2 dump was restored
-            // If pm2 dump was restored, we might need to pm2 resurrect
             await execAsync("pm2 resurrect");
           } catch (e) {
             console.error("Failed to restart services after restore:", e);
