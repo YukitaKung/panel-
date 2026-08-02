@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 const getTypeIcon = (type: string) => {
   switch (type) {
@@ -210,7 +210,7 @@ export default function BackupsPage() {
                   </DialogDescription>
                 </DialogHeader>
                 
-                <ScrollArea className="flex-1 p-6">
+                <div className="flex-1 p-6 overflow-y-auto">
                   <div className="space-y-8">
                     
                     {/* Backup Name */}
@@ -332,7 +332,7 @@ export default function BackupsPage() {
                     </div>
 
                   </div>
-                </ScrollArea>
+                </div>
 
                 <DialogFooter className="p-6 border-t shrink-0 bg-muted/20">
                   <Button variant="outline" type="button" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
