@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { hashApiKey } from "@/lib/api-key";
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
     }
 
     const apiKey = await db.apiKey.findUnique({
-      where: { key: token }
+      where: { key: hashApiKey(token) }
     });
 
     if (apiKey) {

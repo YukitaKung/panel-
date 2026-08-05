@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
+import { hashApiKey } from "@/lib/api-key";
 
 export async function GET() {
   try {
@@ -34,11 +35,11 @@ export async function POST(request: Request) {
     const apiKey = await db.apiKey.create({
       data: {
         name,
-        key
+        key: hashApiKey(key)
       }
     });
 
-    return NextResponse.json(apiKey);
+    return NextResponse.json({ ...apiKey, key });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

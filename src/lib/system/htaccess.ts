@@ -225,8 +225,8 @@ export async function syncHtaccessForPath(filePath: string) {
   await fs.writeFile(sitePath, updatedConfig, "utf8");
 
   try {
-    await execFileAsync("nginx", ["-t"]);
-    await execFileAsync("systemctl", ["reload", "nginx"]);
+    await execFileAsync("sudo", ["nginx", "-t"]);
+    await execFileAsync("sudo", ["systemctl", "reload", "nginx"]);
   } catch (error) {
     if (previousSnippet === null) await fs.unlink(snippetPath).catch(() => {});
     else await fs.writeFile(snippetPath, previousSnippet, "utf8");

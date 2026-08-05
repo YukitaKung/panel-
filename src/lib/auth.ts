@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { hashApiKey } from "@/lib/api-key";
 
 const secretKey = process.env.JWT_SECRET;
 if (!secretKey || secretKey.length < 32) {
@@ -64,7 +65,7 @@ export async function verifyApiRequest(request: Request): Promise<boolean> {
     
     // Find key in database
     const apiKey = await db.apiKey.findUnique({
-      where: { key: token }
+      where: { key: hashApiKey(token) }
     });
 
     if (apiKey) {

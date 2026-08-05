@@ -5,6 +5,7 @@ import { promisify } from "util";
 import path from "path";
 import fs from "fs/promises";
 import { restartApp } from "@/lib/system/pm2";
+import { escapeShellArg } from "@/lib/utils";
 
 const execAsync = promisify(exec);
 export const dynamic = "force-dynamic";
@@ -68,15 +69,15 @@ export async function POST(
 
             if (app.sourceType === "git" && app.repo) {
               send(`[INFO] Pulling latest code from ${app.branch || "main"}...`);
-              await streamCommand(`cd ${targetDir} && git stash && git fetch && git reset --hard origin/${app.branch || "main"}`);
+              await streamCommand(`cd ${escapeShellArg(targetDir)} && git stash && git fetch && git reset --hard origin/${escapeShellArg(app.branch || "main")}`);
             }
 
             if (await fs.stat(path.join(targetDir, "package.json")).catch(() => false)) {
               send(`[INFO] Installing dependencies...`);
-              await streamCommand(`cd ${targetDir} && HUSKY=0 npm install --legacy-peer-deps`);
+              await streamCommand(`cd ${escapeShellArg(targetDir)} && HUSKY=0 npm install --legacy-peer-deps`);
               
               send(`[INFO] Building application...`);
-              await streamCommand(`cd ${targetDir} && npm run build`);
+              await streamCommand(`cd ${escapeShellArg(targetDir)} && npm run build`);
             }
 
             send(`[INFO] Restarting PM2 process...`);
@@ -84,7 +85,7 @@ export async function POST(
             const success = await restartApp(pm2Name);
             if (!success) {
               // Try starting it if it was stopped
-              await streamCommand(`cd ${targetDir} && PORT=${app.port} pm2 start "${app.startScript}" --name "${pm2Name}"`);
+              await streamCommand(`cd ${escapeShellArg(targetDir)} && PORT=${app.port} pm2 start ${escapeShellArg(app.startScript)} --name ${escapeShellArg(pm2Name)}`);
               await execAsync("pm2 save");
             }
 
@@ -92,11 +93,11 @@ export async function POST(
             send(`\n[SUCCESS] Redeployment complete!`);
           } else if (action === "npm_install") {
             send(`[INFO] Running npm install in ${targetDir}...`);
-            await streamCommand(`cd ${targetDir} && HUSKY=0 npm install --legacy-peer-deps`);
+            await streamCommand(`cd ${escapeShellArg(targetDir)} && HUSKY=0 npm install --legacy-peer-deps`);
             send(`\n[SUCCESS] npm install complete!`);
           } else if (action === "npm_build") {
             send(`[INFO] Running npm run build in ${targetDir}...`);
-            await streamCommand(`cd ${targetDir} && npm run build`);
+            await streamCommand(`cd ${escapeShellArg(targetDir)} && npm run build`);
             send(`\n[SUCCESS] npm run build complete!`);
           }
 
