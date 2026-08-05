@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 interface ApiKey {
   id: string;
   name: string;
-  key: string;
+  key?: string;
   lastUsedAt: string | null;
   createdAt: string;
 }
@@ -130,7 +130,8 @@ export default function ApiKeysPage() {
     }
   };
 
-  const maskKey = (key: string) => {
+  const maskKey = (key?: string) => {
+    if (!key) return "•••••••• (hidden)";
     if (key.length <= 15) return key;
     return `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
   };
