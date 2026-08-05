@@ -106,7 +106,7 @@ export async function POST(req: Request) {
             await db.application.update({ where: { id: app.id }, data: { path: targetDir } });
             
             await execAsync(`sudo mkdir -p ${appsDir}`).catch(() => {});
-            await execAsync(`sudo chown -R okkcom269gmailcom:www-data ${appsDir}`).catch(() => {});
+            await execAsync(`sudo chown -R www-data:www-data ${appsDir}`).catch(() => {});
             await execAsync(`sudo chmod -R 775 ${appsDir}`).catch(() => {});
             await execAsync(`sudo rm -rf ${targetDir}`).catch(() => {});
             

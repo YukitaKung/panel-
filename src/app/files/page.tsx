@@ -290,16 +290,17 @@ export default function FilesPage() {
           )}
 
           {!error && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[400px]">Name</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Last Modified</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[400px]">Name</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Last Modified</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                 {/* Up Directory Button */}
                 {currentPath !== "/" && (
                   <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => {
@@ -351,8 +352,9 @@ export default function FilesPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </Card>

@@ -1,9 +1,24 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { exec } from "child_process";
 import { promisify } from "util";
+import fs from "fs/promises";
+import path from "path";
 
 const execAsync = promisify(exec);
+const dataFile = path.join(process.cwd(), "data", "subdomains.json");
+
+async function getSubdomains() {
+  try {
+    const data = await fs.readFile(dataFile, "utf8");
+    return JSON.parse(data);
+  } catch (error) {
+    return [];
+  }
+}
+
+async function saveSubdomains(subdomains: any[]) {
+  await fs.writeFile(dataFile, JSON.stringify(subdomains, null, 2));
+}
 
 export async function POST(request: Request) {
   try {
@@ -13,37 +28,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing domain" }, { status: 400 });
     }
 
-    const subdomain = await db.subdomain.findUnique({ where: { domain } });
-    if (!subdomain) {
+    const subdomains = await getSubdomains();
+    const subdomainIndex = subdomains.findIndex((s: any) => s.domain === domain);
+    
+    if (subdomainIndex === -1) {
       return NextResponse.json({ error: "Subdomain not found" }, { status: 404 });
     }
 
     // Set status to pending
-    await db.subdomain.update({
-      where: { domain },
-      data: { sslStatus: "pending" }
-    });
+    subdomains[subdomainIndex].sslStatus = "pending";
+    await saveSubdomains(subdomains);
 
     try {
       // Run Certbot
       const cmd = `sudo certbot --nginx -d ${domain} --non-interactive --agree-tos --register-unsafely-without-email`;
       await execAsync(cmd);
       
-      // Update DB to active
-      await db.subdomain.update({
-        where: { domain },
-        data: { sslStatus: "active", sslEnabled: true }
-      });
+      // Update JSON to active
+      const updatedSubdomains = await getSubdomains();
+      const updatedIndex = updatedSubdomains.findIndex((s: any) => s.domain === domain);
+      if (updatedIndex !== -1) {
+        updatedSubdomains[updatedIndex].sslStatus = "active";
+        updatedSubdomains[updatedIndex].sslEnabled = true;
+        await saveSubdomains(updatedSubdomains);
+      }
       
       return NextResponse.json({ success: true, message: "SSL Certificate issued successfully" });
     } catch (certError: any) {
       console.error("Certbot Error:", certError);
       
-      // Update DB to error
-      await db.subdomain.update({
-        where: { domain },
-        data: { sslStatus: "error" }
-      });
+      // Update JSON to error
+      const errorSubdomains = await getSubdomains();
+      const errorIndex = errorSubdomains.findIndex((s: any) => s.domain === domain);
+      if (errorIndex !== -1) {
+        errorSubdomains[errorIndex].sslStatus = "error";
+        await saveSubdomains(errorSubdomains);
+      }
       
       return NextResponse.json({ error: "Failed to issue SSL: " + certError.message }, { status: 500 });
     }
@@ -62,12 +82,17 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Missing domain" }, { status: 400 });
     }
 
-    const updated = await db.subdomain.update({
-      where: { domain },
-      data: { sslEnabled }
-    });
+    const subdomains = await getSubdomains();
+    const subdomainIndex = subdomains.findIndex((s: any) => s.domain === domain);
 
-    return NextResponse.json({ success: true, subdomain: updated });
+    if (subdomainIndex === -1) {
+      return NextResponse.json({ error: "Subdomain not found" }, { status: 404 });
+    }
+
+    subdomains[subdomainIndex].sslEnabled = sslEnabled;
+    await saveSubdomains(subdomains);
+
+    return NextResponse.json({ success: true, subdomain: subdomains[subdomainIndex] });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update SSL settings" }, { status: 500 });
   }

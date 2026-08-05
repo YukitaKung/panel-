@@ -52,7 +52,7 @@ export async function POST(request: Request) {
           if (opts.websiteData) {
             if (targets.all) {
               pathsToBackup.push("/var/www/apps");
-              pathsToBackup.push("/var/www/subdomains");
+              pathsToBackup.push("/var/www/domains");
             } else if (targets.selected && targets.selected.length > 0) {
               pathsToBackup.push(...targets.selected);
             }
@@ -65,6 +65,8 @@ export async function POST(request: Request) {
           if (opts.panelConfigs) {
             pathsToBackup.push("/etc/nginx/sites-available");
             pathsToBackup.push("/etc/nginx/sites-enabled");
+            pathsToBackup.push("/etc/nginx/nginx.conf");
+            pathsToBackup.push(path.join(process.cwd(), "data", "subdomains.json"));
             // Could also backup pm2 dump file if exists
             pathsToBackup.push(path.join(process.env.HOME || "/root", ".pm2/dump.pm2"));
           }

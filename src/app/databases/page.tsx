@@ -18,6 +18,7 @@ interface DBItem {
   type: "mysql" | "postgres";
   sizeMb: number;
   user: string;
+  tags?: string[];
 }
 
 export default function DatabasesPage() {
@@ -34,6 +35,10 @@ export default function DatabasesPage() {
   const [newDbPassword, setNewDbPassword] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
+  const [editTagsDb, setEditTagsDb] = useState<DBItem | null>(null);
+  const [currentTagsStr, setCurrentTagsStr] = useState("");
+  const [isUpdatingTags, setIsUpdatingTags] = useState(false);
+
   const fetchDatabases = async (type: "mysql" | "postgres") => {
     setIsLoading(true);
     try {
@@ -46,6 +51,27 @@ export default function DatabasesPage() {
       setDatabases([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUpdateTags = async () => {
+    if (!editTagsDb) return;
+    setIsUpdatingTags(true);
+    try {
+      const tagsArray = currentTagsStr.split(",").map(t => t.trim()).filter(Boolean);
+      const res = await fetch("/api/databases/tags", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dbName: editTagsDb.name, engine: activeTab, tags: tagsArray })
+      });
+      if (!res.ok) throw new Error("Failed to update tags");
+      toast.success("Tags updated successfully");
+      setEditTagsDb(null);
+      fetchDatabases(activeTab);
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsUpdatingTags(false);
     }
   };
 
@@ -159,6 +185,7 @@ export default function DatabasesPage() {
             isLoading={isLoading} 
             databases={filteredDbs} 
             onDelete={setConfirmDelete}
+            onEditTags={(db) => { setEditTagsDb(db); setCurrentTagsStr((db.tags || []).join(", ")); }}
             type="mysql"
           />
         </TabsContent>
@@ -167,6 +194,7 @@ export default function DatabasesPage() {
             isLoading={isLoading} 
             databases={filteredDbs} 
             onDelete={setConfirmDelete}
+            onEditTags={(db) => { setEditTagsDb(db); setCurrentTagsStr((db.tags || []).join(", ")); }}
             type="postgres"
           />
         </TabsContent>
@@ -182,17 +210,17 @@ export default function DatabasesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dbname" className="text-right">DB Name</Label>
-              <Input id="dbname" value={newDbName} onChange={(e) => setNewDbName(e.target.value)} className="col-span-3" />
+            <div className="grid grid-cols-1 sm:grid-cols-4 sm:items-center gap-2 sm:gap-4">
+              <Label htmlFor="dbname" className="sm:text-right">DB Name</Label>
+              <Input id="dbname" value={newDbName} onChange={(e) => setNewDbName(e.target.value)} className="sm:col-span-3" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dbuser" className="text-right">Username</Label>
-              <Input id="dbuser" value={newDbUser} onChange={(e) => setNewDbUser(e.target.value)} className="col-span-3" />
+            <div className="grid grid-cols-1 sm:grid-cols-4 sm:items-center gap-2 sm:gap-4">
+              <Label htmlFor="dbuser" className="sm:text-right">Username</Label>
+              <Input id="dbuser" value={newDbUser} onChange={(e) => setNewDbUser(e.target.value)} className="sm:col-span-3" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dbpass" className="text-right">Password</Label>
-              <div className="col-span-3 flex space-x-2">
+            <div className="grid grid-cols-1 sm:grid-cols-4 sm:items-center gap-2 sm:gap-4">
+              <Label htmlFor="dbpass" className="sm:text-right">Password</Label>
+              <div className="sm:col-span-3 flex space-x-2">
                 <Input id="dbpass" value={newDbPassword} onChange={(e) => setNewDbPassword(e.target.value)} type="text" />
                 <Button variant="outline" type="button" onClick={generatePassword}>Generate</Button>
               </div>
@@ -206,11 +234,35 @@ export default function DatabasesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!editTagsDb} onOpenChange={(open) => !open && setEditTagsDb(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Database Tags</DialogTitle>
+            <DialogDescription>
+              Add or remove tags for database <strong>{editTagsDb?.name}</strong>. Separate tags with commas (e.g., model, pro).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input 
+              value={currentTagsStr} 
+              onChange={e => setCurrentTagsStr(e.target.value)} 
+              placeholder="model, pro, production" 
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTagsDb(null)}>Cancel</Button>
+            <Button onClick={handleUpdateTags} disabled={isUpdatingTags}>
+              {isUpdatingTags ? "Saving..." : "Save Tags"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function DBTable({ isLoading, databases, onDelete, type }: { isLoading: boolean, databases: DBItem[], onDelete: (name: string) => void, type: "mysql" | "postgres" }) {
+function DBTable({ isLoading, databases, onDelete, onEditTags, type }: { isLoading: boolean, databases: DBItem[], onDelete: (name: string) => void, onEditTags: (db: DBItem) => void, type: "mysql" | "postgres" }) {
   return (
     <Card className="flex flex-col relative min-h-[400px]">
       {isLoading && (
@@ -218,15 +270,17 @@ function DBTable({ isLoading, databases, onDelete, type }: { isLoading: boolean,
           <RefreshCw className="w-8 h-8 animate-spin text-primary" />
         </div>
       )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Database Name</TableHead>
-            <TableHead>Owner / User</TableHead>
-            <TableHead>Size (MB)</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Database Name</TableHead>
+              <TableHead>Owner / User</TableHead>
+              <TableHead>Size (MB)</TableHead>
+              <TableHead>Tags</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {databases.length === 0 && !isLoading && (
             <TableRow>
@@ -244,8 +298,21 @@ function DBTable({ isLoading, databases, onDelete, type }: { isLoading: boolean,
               </TableCell>
               <TableCell>{db.user}</TableCell>
               <TableCell>{db.sizeMb.toFixed(2)} MB</TableCell>
+              <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {db.tags?.map(t => (
+                    <span key={t} className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full border border-primary/20">
+                      {t}
+                    </span>
+                  ))}
+                  {(!db.tags || db.tags.length === 0) && <span className="text-xs text-muted-foreground italic">No tags</span>}
+                </div>
+              </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => onEditTags(db)}>
+                    Tags
+                  </Button>
                   <Link href={`/databases/studio?type=${type}&db=${db.name}`}>
                     <Button variant="outline" size="sm">
                       <ExternalLink className="w-4 h-4 mr-2" />
@@ -260,7 +327,8 @@ function DBTable({ isLoading, databases, onDelete, type }: { isLoading: boolean,
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
     </Card>
   );
 }

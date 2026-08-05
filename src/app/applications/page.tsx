@@ -332,7 +332,7 @@ export default function ApplicationsPage() {
                     </TabsContent>
                   </Tabs>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="startScript">Start Command</Label>
                       <Input 

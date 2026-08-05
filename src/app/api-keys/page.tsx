@@ -139,7 +139,7 @@ export default function ApiKeysPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
-        <p className="text-muted-foreground mt-1">Manage API keys to securely interact with the HostPanel API.</p>
+        <p className="text-muted-foreground mt-1">Manage API keys to securely interact with the OX PANEL API.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -203,7 +203,7 @@ export default function ApiKeysPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-muted-foreground">
             <p>
-              API keys grant <strong>full access</strong> to your HostPanel. Treat them exactly like your password.
+              API keys grant <strong>full access</strong> to your OX PANEL. Treat them exactly like your password.
             </p>
             <ul className="list-disc pl-5 space-y-2">
               <li>Never share your API keys in public repositories or client-side code.</li>

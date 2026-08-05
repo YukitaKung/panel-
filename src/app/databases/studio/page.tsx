@@ -8,7 +8,10 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { Code2 } from "lucide-react";
 
 function StudioContent() {
   const searchParams = useSearchParams();
@@ -31,6 +34,13 @@ function StudioContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+
+  // Custom Query State
+  const [isQueryOpen, setIsQueryOpen] = useState(false);
+  const [customQuery, setCustomQuery] = useState("");
+  const [queryTarget, setQueryTarget] = useState<"single" | "tag">("single");
+  const [queryTag, setQueryTag] = useState("");
+  const [isExecutingQuery, setIsExecutingQuery] = useState(false);
 
   useEffect(() => {
     if (!dbName) {
@@ -147,6 +157,40 @@ function StudioContent() {
     }
   };
 
+  const handleExecuteQuery = async () => {
+    if (!customQuery) return;
+    if (queryTarget === "tag" && !queryTag) {
+      toast.error("Please specify a tag");
+      return;
+    }
+    
+    setIsExecutingQuery(true);
+    try {
+      const res = await fetch(`/api/databases/studio/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          type, 
+          dbName, 
+          query: customQuery,
+          targetType: queryTarget,
+          tag: queryTag
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Query failed");
+      
+      toast.success(d.message || "Query executed successfully");
+      setIsQueryOpen(false);
+      setCustomQuery("");
+      fetchTables(); // Refresh in case tables were added/removed
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setIsExecutingQuery(false);
+    }
+  };
+
   if (!dbName) return null;
 
   return (
@@ -167,11 +211,15 @@ function StudioContent() {
             ref={fileInputRef} 
             onChange={handleUploadSql} 
           />
+          <Button variant="secondary" onClick={() => setIsQueryOpen(true)}>
+            <Code2 className="w-4 h-4 mr-2" />
+            Run Query
+          </Button>
           <Button variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
             {isUploading ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
             Upload .sql
           </Button>
-          <Button variant="outline" onClick={() => router.push("/databases")}>Back to Databases</Button>
+          <Button variant="outline" onClick={() => router.push("/databases")}>Back</Button>
         </div>
       </div>
 
@@ -245,7 +293,7 @@ function StudioContent() {
             )}
 
             {!error && data && data.columns && data.columns.length > 0 && (
-              <div className="w-full h-full">
+              <div className="w-full h-full overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-muted/50 sticky top-0 shadow-sm z-0">
                     <TableRow>
@@ -309,6 +357,54 @@ function StudioContent() {
           </div>
         </Card>
       </div>
+
+      <Dialog open={isQueryOpen} onOpenChange={setIsQueryOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Execute Custom SQL Query</DialogTitle>
+            <DialogDescription>
+              Write SQL to execute. You can target this specific database, or execute across all databases matching a specific tag.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold">Target</label>
+              <Select value={queryTarget} onValueChange={(v) => setQueryTarget(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">This Database ({dbName})</SelectItem>
+                  <SelectItem value="tag">Multiple Databases by Tag</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {queryTarget === "tag" && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold">Target Tag</label>
+                <Input value={queryTag} onChange={e => setQueryTag(e.target.value)} placeholder="e.g. model, pro" />
+              </div>
+            )}
+            
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold">SQL Query</label>
+              <Textarea 
+                className="font-mono h-40" 
+                placeholder="UPDATE users SET status = 'active';" 
+                value={customQuery}
+                onChange={e => setCustomQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsQueryOpen(false)}>Cancel</Button>
+            <Button onClick={handleExecuteQuery} disabled={isExecutingQuery}>
+              {isExecutingQuery ? "Executing..." : "Execute Query"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -190,19 +190,19 @@ export default function BackupsPage() {
         onConfirm={() => confirmRestore && handleRestore(confirmRestore)}
       />
       
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Backups</h1>
           <p className="text-muted-foreground mt-1">Manage full system backups and restore points.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger render={<Button />}>
               <Plus className="h-4 w-4 mr-2" />
               Create Backup
             </DialogTrigger>
-            <DialogContent className="max-w-4xl p-0 overflow-hidden">
-              <form onSubmit={handleCreate} className="flex flex-col h-[85vh] max-h-[800px]">
+            <DialogContent className="max-w-4xl p-0 overflow-hidden sm:max-h-[85vh]">
+              <form onSubmit={handleCreate} className="flex flex-col h-[85vh] sm:h-[85vh] max-h-[800px]">
                 <DialogHeader className="p-6 border-b shrink-0 bg-muted/20">
                   <DialogTitle className="text-xl">Create Advanced Backup</DialogTitle>
                   <DialogDescription>
@@ -351,7 +351,7 @@ export default function BackupsPage() {
             List of all available backups on this server. Files are stored in /var/www/backups.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">

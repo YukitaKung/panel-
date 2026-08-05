@@ -93,3 +93,14 @@ model Notification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model DatabaseTag {
+  id        String   @id @default(uuid())
+  dbName    String
+  engine    String   // mysql, postgres
+  tags      String   // JSON string of tags: '["model", "pro"]'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([dbName, engine])
+}

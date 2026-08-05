@@ -14,9 +14,9 @@ function LoginContent() {
     <div className="w-full max-w-md mx-auto">
       <div className="flex flex-col items-center mb-8">
         <div className="bg-primary/10 p-4 rounded-none mb-4">
-          <Server className="h-10 w-10 text-primary" />
+          <img src="/logo.png" alt="OX PANEL Logo" className="h-12 w-12 object-contain" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">HostPanel</h1>
+        <h1 className="text-3xl font-bold tracking-tight">OX PANEL</h1>
         <p className="text-muted-foreground mt-2">Premium Hosting Control Panel</p>
       </div>
 

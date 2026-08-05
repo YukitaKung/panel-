@@ -1,1 +1,50 @@
-[]
+[
+  {
+    "domain": "666",
+    "type": "php",
+    "port": null,
+    "sslEnabled": false,
+    "sslStatus": "none",
+    "createdAt": "2026-08-01T14:00:00.000Z"
+  },
+  {
+    "domain": "demo-2.orynx.xyz",
+    "type": "php",
+    "port": null,
+    "sslEnabled": false,
+    "sslStatus": "none",
+    "createdAt": "2026-08-01T14:00:00.000Z"
+  },
+  {
+    "domain": "test.157.254.192.58.nip.io",
+    "type": "node",
+    "port": 3001,
+    "sslEnabled": false,
+    "sslStatus": "none",
+    "createdAt": "2026-08-01T14:00:00.000Z"
+  },
+  {
+    "domain": "zsq.157.254.192.58.nip.io",
+    "type": "php",
+    "port": null,
+    "sslEnabled": false,
+    "sslStatus": "none",
+    "createdAt": "2026-08-01T14:00:00.000Z"
+  },
+  {
+    "domain": "zswwq.157.254.192.58.nip.io",
+    "type": "php",
+    "port": null,
+    "sslEnabled": false,
+    "sslStatus": "none",
+    "createdAt": "2026-08-01T14:00:00.000Z"
+  },
+  {
+    "domain": "zwqsq.157.254.192.58.nip.io",
+    "type": "php",
+    "port": null,
+    "sslEnabled": false,
+    "sslStatus": "none",
+    "createdAt": "2026-08-01T14:00:00.000Z"
+  }
+]

@@ -23,7 +23,7 @@ const lineSeed = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "HostPanel — Premium Hosting Control Panel",
+  title: "OX PANEL",
   description: "Self-hosted VPS Control Panel",
 };
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { setSession } from "@/lib/auth";
 
-const ALLOWED_USER_ID = "1031735724573212673";
+const ALLOWED_USER_ID = process.env.ALLOWED_DISCORD_ID || "1031735724573212673";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +13,10 @@ export async function GET(request: Request) {
 
   const clientId = process.env.DISCORD_CLIENT_ID;
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
-  const redirectUri = process.env.DISCORD_REDIRECT_URI || "http://157.254.192.58:5555/api/auth/callback";
+  
+  const host = request.headers.get("host") || "157.20.83.170:5555";
+  const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "http"; // Change to https if panel uses SSL in future
+  const redirectUri = process.env.DISCORD_REDIRECT_URI || `${protocol}://${host}/api/auth/callback`;
 
   if (!clientId || !clientSecret) {
     return NextResponse.json({ error: "Discord credentials not configured" }, { status: 500 });
@@ -62,7 +65,11 @@ export async function GET(request: Request) {
     }
 
     // 4. Success! Create session
-    await setSession(userData.id);
+    const avatarUrl = userData.avatar 
+      ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+      : `https://cdn.discordapp.com/embed/avatars/0.png`;
+
+    await setSession(userData.id, userData.username, avatarUrl);
 
     // 5. Redirect to Dashboard
     return NextResponse.redirect(new URL("/", request.url));

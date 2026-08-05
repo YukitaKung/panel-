@@ -48,17 +48,19 @@ export async function POST(request: Request) {
 
     if (type === "php") {
       // Create web root
-      await execAsync(`sudo mkdir -p /var/www/${domain}/public_html`);
-      await execAsync(`sudo chown -R okkcom269gmailcom:www-data /var/www/${domain}`);
-      await execAsync(`sudo chmod -R 775 /var/www/${domain}`);
+      await execAsync(`sudo mkdir -p /var/www/domains/${domain}`);
+      await execAsync(`sudo chown -R www-data:www-data /var/www/domains/${domain}`);
+      await execAsync(`sudo chmod -R 775 /var/www/domains/${domain}`);
       
       // We assume php8.3-fpm as installed in setup
       nginxConfig = `
 server {
     listen 80;
     server_name ${domain};
-    root /var/www/${domain}/public_html;
+    root /var/www/domains/${domain};
     index index.php index.html index.htm;
+    
+    include snippets/custom_error_pages.conf;
 
     location / {
         try_files $uri $uri/ =404;
@@ -80,6 +82,8 @@ server {
 server {
     listen 80;
     server_name ${domain};
+    
+    include snippets/custom_error_pages.conf;
 
     location / {
         proxy_pass http://127.0.0.1:${targetPort};
@@ -116,6 +120,8 @@ server {
       domain,
       type,
       port: type === "node" ? port : null,
+      sslEnabled: false,
+      sslStatus: "none",
       createdAt: new Date().toISOString()
     };
     subdomains.push(newEntry);
@@ -151,15 +157,15 @@ export async function PUT(request: Request) {
 
     if (type === "php") {
       // Create web root
-      await execAsync(`sudo mkdir -p /var/www/${domain}/public_html`);
-      await execAsync(`sudo chown -R okkcom269gmailcom:www-data /var/www/${domain}`);
-      await execAsync(`sudo chmod -R 775 /var/www/${domain}`);
+      await execAsync(`sudo mkdir -p /var/www/domains/${domain}`);
+      await execAsync(`sudo chown -R www-data:www-data /var/www/domains/${domain}`);
+      await execAsync(`sudo chmod -R 775 /var/www/domains/${domain}`);
       
       nginxConfig = `
 server {
     listen 80;
     server_name ${domain};
-    root /var/www/${domain}/public_html;
+    root /var/www/domains/${domain};
     index index.php index.html index.htm;
 
     location / {

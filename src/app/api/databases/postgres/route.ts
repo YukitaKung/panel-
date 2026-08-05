@@ -6,7 +6,11 @@ export async function GET() {
     // Show postgres databases
     const { stdout } = await execAsync(`sudo -u postgres psql -t -c "SELECT datname, pg_size_pretty(pg_database_size(datname)), pg_get_userbyid(datdba) FROM pg_database WHERE datistemplate = false;"`);
     
-    // Parse the output
+    // Fetch tags from local DB
+    const { db } = await import("@/lib/db");
+    const dbTags = await db.databaseTag.findMany({ where: { engine: "postgres" } });
+    const tagMap = new Map(dbTags.map(t => [t.dbName, JSON.parse(t.tags || "[]")]));
+
     const lines = stdout.trim().split("\n").filter(Boolean);
     const dbs = lines.map(line => {
       const parts = line.split("|").map(s => s.trim());
@@ -23,7 +27,7 @@ export async function GET() {
         if (sizeStr.includes("GB")) sizeMb = parseFloat(sizeStr) * 1024;
         if (sizeStr.includes("kB")) sizeMb = parseFloat(sizeStr) / 1024;
         
-        return { name, type: "postgres", sizeMb, user };
+        return { name, type: "postgres", sizeMb, user, tags: tagMap.get(name) || [] };
       }
       return null;
     }).filter(Boolean);
@@ -45,17 +49,34 @@ export async function POST(request: Request) {
 
     const escapedPassword = escapeSqlString(dbPassword);
 
-    // PostgreSQL requires user to be created first, then db owner assigned
-    // We cannot easily use CREATE ROLE IF NOT EXISTS in all versions, so we try and ignore error
+    // Securely write query to a temporary file to prevent Bash command injection
+    const tmpFile = `/tmp/pg_create_${Date.now()}_${Math.random().toString(36).substring(7)}.sql`;
+    
+    // PostgreSQL block to handle role creation or password update if it exists
+    const query = `
+      DO
+      $do$
+      BEGIN
+        IF NOT EXISTS (
+            SELECT FROM pg_catalog.pg_roles
+            WHERE  rolname = '${dbUser}') THEN
+            CREATE ROLE "${dbUser}" WITH LOGIN PASSWORD '${escapedPassword}';
+        ELSE
+            ALTER ROLE "${dbUser}" WITH PASSWORD '${escapedPassword}';
+        END IF;
+      END
+      $do$;
+      CREATE DATABASE "${dbName}" OWNER "${dbUser}";
+    `;
+    
+    const fs = require('fs/promises');
+    await fs.writeFile(tmpFile, query, { mode: 0o600 });
+    
     try {
-      await execAsync(`sudo -u postgres psql -c "CREATE ROLE \\"${dbUser}\\" WITH LOGIN PASSWORD '${escapedPassword}';"`);
-    } catch {
-      // Role probably exists, update password
-      await execAsync(`sudo -u postgres psql -c "ALTER ROLE \\"${dbUser}\\" WITH PASSWORD '${escapedPassword}';"`);
+      await execAsync(`sudo -u postgres psql -f ${tmpFile}`);
+    } finally {
+      await fs.unlink(tmpFile).catch(() => {});
     }
-
-    // Create DB
-    await execAsync(`sudo -u postgres psql -c "CREATE DATABASE \\"${dbName}\\" OWNER \\"${dbUser}\\";"`);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

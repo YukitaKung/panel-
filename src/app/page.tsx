@@ -31,6 +31,7 @@ export default function Dashboard() {
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
+    if (!bytes) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -50,7 +51,7 @@ export default function Dashboard() {
       </div>
 
       {/* System Resources */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
@@ -74,6 +75,20 @@ export default function Dashboard() {
             </div>
             <p className="text-xs text-muted-foreground">
               / {stats ? formatBytes(stats.memoryTotal) : "..."} Total
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Disk Usage</CardTitle>
+            <HardDrive className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats ? `${formatBytes(stats.diskTotal - stats.diskUsed)}` : "..."}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Free of {stats ? formatBytes(stats.diskTotal) : "..."}
             </p>
           </CardContent>
         </Card>

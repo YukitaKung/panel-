@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const items = [
   {
@@ -96,13 +97,25 @@ const items = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const [user, setUser] = useState<{ username: string; avatarUrl: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(res => res.json())
+      .then(data => {
+        if (data.authenticated) {
+          setUser(data.user);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   return (
     <Sidebar>
       <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
         <div className="flex items-center gap-2 font-bold text-lg text-primary w-full">
-          <Server className="h-6 w-6" />
-          <span>HostPanel</span>
+          <img src="/logo.png" alt="OX PANEL Logo" className="h-6 w-6 object-contain rounded" />
+          <span>OX PANEL</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -124,12 +137,23 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupContent>
+        <SidebarGroup className="mt-auto border-t border-border/50">
+          <SidebarGroupContent className="pt-2">
             <SidebarMenu>
+              {user && (
+                <SidebarMenuItem>
+                  <div className="flex items-center gap-3 px-2 py-2 mb-2 bg-muted/50 rounded-md border border-border/50">
+                    <img src={user.avatarUrl} alt={user.username} className="w-8 h-8 rounded-full border border-border bg-background" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold leading-tight text-foreground">{user.username}</span>
+                      <span className="text-xs text-muted-foreground leading-tight">Admin</span>
+                    </div>
+                  </div>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => window.location.href = "/api/auth/logout"} className="text-destructive hover:text-destructive">
-                  <LogOut />
+                <SidebarMenuButton onClick={() => window.location.href = "/api/auth/logout"} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <LogOut className="h-4 w-4" />
                   <span>ออกจากระบบ (Logout)</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>

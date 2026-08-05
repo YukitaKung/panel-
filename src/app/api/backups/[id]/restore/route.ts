@@ -44,7 +44,7 @@ export async function POST(
         // If it's a full system backup or contains config, restart services
         if (backup.type === "Full System" || backup.type === "Advanced") {
           try {
-            await execAsync("sudo systemctl reload nginx");
+            await execAsync("sudo systemctl restart nginx");
             
             // Because we excluded node_modules and .next, we need to rebuild the apps
             const apps = await db.application.findMany();

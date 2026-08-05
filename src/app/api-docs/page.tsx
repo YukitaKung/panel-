@@ -59,7 +59,7 @@ export default function ApiDocsPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">API Documentation</h1>
         <p className="text-muted-foreground mt-1">
-          Automate HostPanel operations using HTTP requests. All API requests must be authenticated.
+          Automate OX PANEL operations using HTTP requests. All API requests must be authenticated.
         </p>
       </div>
 
@@ -295,7 +295,7 @@ export default function ApiDocsPage() {
                 <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">GET</Badge>
                 <CardTitle className="text-lg">/api/logs</CardTitle>
               </div>
-              <CardDescription>Fetch recent PM2 application logs and HostPanel system logs.</CardDescription>
+              <CardDescription>Fetch recent PM2 application logs and OX PANEL system logs.</CardDescription>
             </CardHeader>
             <CardContent>
               <CodeBlock language="bash" code={`curl -X GET http://YOUR_SERVER_IP:5555/api/logs \\
