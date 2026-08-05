@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { escapeShellArg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 import { exec, spawn } from "child_process";
@@ -105,13 +106,13 @@ export async function POST(req: Request) {
             
             await db.application.update({ where: { id: app.id }, data: { path: targetDir } });
             
-            await execAsync(`sudo mkdir -p ${appsDir}`).catch(() => {});
-            await execAsync(`sudo chown -R www-data:www-data ${appsDir}`).catch(() => {});
-            await execAsync(`sudo chmod -R 775 ${appsDir}`).catch(() => {});
-            await execAsync(`sudo rm -rf ${targetDir}`).catch(() => {});
+            await execAsync(`sudo mkdir -p ${escapeShellArg(appsDir)}`).catch(() => {});
+            await execAsync(`sudo chown -R www-data:www-data ${escapeShellArg(appsDir)}`).catch(() => {});
+            await execAsync(`sudo chmod -R 775 ${escapeShellArg(appsDir)}`).catch(() => {});
+            await execAsync(`sudo rm -rf ${escapeShellArg(targetDir)}`).catch(() => {});
             
             send(`[INFO] Cloning repository ${app.repo}...`);
-            await streamCommand(`git clone -b ${app.branch} ${app.repo} ${targetDir}`);
+            await streamCommand(`git clone -b ${escapeShellArg(app.branch!)} ${escapeShellArg(app.repo!)} ${escapeShellArg(targetDir)}`);
             
             await db.application.update({
               where: { id: app.id },
@@ -127,20 +128,20 @@ export async function POST(req: Request) {
 
           if (sourceType === "git" && await fs.stat(path.join(targetDir, "package.json")).catch(() => false)) {
             send(`[INFO] Checking environment variables...`);
-            await streamCommand(`cd ${targetDir} && if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env && echo "[INFO] Auto-created .env from .env.example"; fi`).catch(() => {});
+            await streamCommand(`cd ${escapeShellArg(targetDir)} && if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env && echo "[INFO] Auto-created .env from .env.example"; fi`).catch(() => {});
             
             send(`[INFO] Installing dependencies...`);
-            await streamCommand(`cd ${targetDir} && npm pkg delete scripts.prepare`).catch(() => {});
-            await streamCommand(`cd ${targetDir} && HUSKY=0 npm install --legacy-peer-deps`);
+            await streamCommand(`cd ${escapeShellArg(targetDir)} && npm pkg delete scripts.prepare`).catch(() => {});
+            await streamCommand(`cd ${escapeShellArg(targetDir)} && HUSKY=0 npm install --legacy-peer-deps`);
             
             send(`[INFO] Building application...`);
-            await streamCommand(`cd ${targetDir} && npm run build`).catch((err: any) => {
+            await streamCommand(`cd ${escapeShellArg(targetDir)} && npm run build`).catch((err: any) => {
               throw new Error(`Build failed: ${err.message}`);
             });
           }
 
           send(`[INFO] Starting PM2 process...`);
-          const pm2Cmd = `cd ${targetDir} && PORT=${app.port} pm2 start "${startScript}" --name "app-${app.id}"`;
+          const pm2Cmd = `cd ${escapeShellArg(targetDir)} && PORT=${app.port} pm2 start ${escapeShellArg(startScript)} --name "app-${app.id}"`;
           await streamCommand(pm2Cmd);
           await execAsync("pm2 save");
 

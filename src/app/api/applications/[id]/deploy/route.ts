@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { escapeShellArg } from "@/lib/utils";
 import { spawn } from "child_process";
 import path from "path";
 import { stopApp, restartApp } from "@/lib/system/pm2";
@@ -60,7 +61,7 @@ export async function POST(
           // 2. Execute Action
           if (action === "redeploy" && app.sourceType === "git") {
             send(`[INFO] Pulling latest changes from git...`);
-            await streamCommand(`git pull origin ${app.branch || 'main'}`, appDir);
+            await streamCommand(`git pull origin ${escapeShellArg(app.branch || 'main')}`, appDir);
             
             send(`[INFO] Running npm install...`);
             await streamCommand(`npm install`, appDir);

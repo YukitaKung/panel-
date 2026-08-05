@@ -40,9 +40,13 @@ async function syncCrontab(jobs: any[]) {
   });
   
   // Write to a temporary file and load into crontab
-  const tmpPath = path.join("/tmp", "panel_crontab");
+  const tmpPath = path.join("/tmp", `panel_crontab_${Date.now()}_${Math.floor(Math.random() * 10000)}`);
   await fs.writeFile(tmpPath, cronString);
-  await execAsync(`crontab ${tmpPath}`);
+  try {
+    await execAsync(`crontab ${tmpPath}`);
+  } finally {
+    await fs.unlink(tmpPath).catch(() => {});
+  }
 }
 
 export async function GET() {

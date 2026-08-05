@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { escapeShellArg } from "@/lib/utils";
 import { exec } from "child_process";
 import { promisify } from "util";
 
@@ -36,17 +37,21 @@ export async function POST(request: Request) {
 
     // Attempt to create user on the OS level
     try {
+      const safePath = escapeShellArg(path);
+      const safeUsername = escapeShellArg(username);
+      const safePassword = escapeShellArg(password);
+
       // 1. Create directory if not exists
-      await execAsync(`sudo mkdir -p ${path}`);
+      await execAsync(`sudo mkdir -p ${safePath}`);
       
       // 2. Add user with home directory and bash
-      await execAsync(`sudo useradd -m -d ${path} -s /bin/bash ${username}`);
+      await execAsync(`sudo useradd -m -d ${safePath} -s /bin/bash ${safeUsername}`);
       
-      // 3. Set password
-      await execAsync(`echo "${username}:${password}" | sudo chpasswd`);
+      // 3. Set password securely using printf
+      await execAsync(`printf "%s:%s\\n" ${safeUsername} ${safePassword} | sudo chpasswd`);
       
       // 4. Set permissions (Ownership)
-      await execAsync(`sudo chown -R ${username}:${username} ${path}`);
+      await execAsync(`sudo chown -R ${safeUsername}:${safeUsername} ${safePath}`);
       
     } catch (osError: any) {
       console.error("OS User Creation Error:", osError);

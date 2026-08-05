@@ -39,7 +39,7 @@ export async function setSession(userId: string, username?: string, avatarUrl?: 
   cookieStore.set("hostpanel_session", session, {
     expires,
     httpOnly: true,
-    secure: false, // Set to false temporarily since we are using HTTP (IP:Port)
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
   });
