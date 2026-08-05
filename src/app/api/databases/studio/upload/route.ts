@@ -4,6 +4,19 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 
+function normalizeMysqlDump(sql: string) {
+  const textTypes = "(?:tiny|medium|long)?(?:text|blob)";
+  const spatialTypes = "(?:geometry|point|linestring|polygon|multipoint|multilinestring|multipolygon|geometrycollection)";
+  const column = "(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_$]*)";
+  const defaultValue = "(?:'(?:''|[^'])*'|NULL|CURRENT_TIMESTAMP(?:\\s*\\([^)]*\\))?|\\([^)]*\\)|[^\\s,]+)";
+  const invalidDefault = new RegExp(
+    `(\\s*${column}\\s+(?:${textTypes}|json|${spatialTypes})\\b[^,\\n]*?)\\s+DEFAULT\\s+${defaultValue}(?=\\s*(?:COMMENT\\b|,|$))`,
+    "gim",
+  );
+
+  return sql.replace(invalidDefault, "$1");
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -24,11 +37,15 @@ export async function POST(request: Request) {
     // Save to temp file
     const tempDir = os.tmpdir();
     const tempFilePath = path.join(tempDir, `upload-${Date.now()}-${Math.floor(Math.random() * 10000)}.sql`);
+    const importFilePath = path.join(tempDir, `upload-${Date.now()}-${Math.floor(Math.random() * 10000)}-mysql8.sql`);
     await fs.writeFile(tempFilePath, buffer);
 
     try {
       if (type === "mysql") {
-        await execAsync(`sudo mysql ${dbName} < ${tempFilePath}`);
+        const sql = buffer.toString("utf8");
+        const normalizedSql = normalizeMysqlDump(sql);
+        await fs.writeFile(importFilePath, normalizedSql, "utf8");
+        await execAsync(`sudo mysql ${dbName} < ${importFilePath}`);
       } else if (type === "postgres") {
         await execAsync(`sudo -u postgres psql -d ${dbName} -f ${tempFilePath}`);
       } else {
@@ -37,6 +54,7 @@ export async function POST(request: Request) {
     } finally {
       // Clean up
       await fs.unlink(tempFilePath).catch(() => {});
+      await fs.unlink(importFilePath).catch(() => {});
     }
 
     return NextResponse.json({ success: true, message: "SQL file executed successfully." });
