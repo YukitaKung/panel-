@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { 
   Folder, File, FileText, FileCode2, FileImage, 
-  Trash2, ChevronRight, Home, RefreshCw, Plus, FilePlus, FolderPlus, Upload
+  Trash2, ChevronRight, Home, RefreshCw, FilePlus, FolderPlus, Upload, FileArchive, ArchiveRestore
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,7 @@ export default function FilesPage() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
 
   const fetchFiles = async (path: string) => {
     setIsLoading(true);
@@ -148,6 +149,25 @@ export default function FilesPage() {
     }
   };
 
+  const handleExtract = async (archivePath: string) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/files/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: archivePath }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Extraction failed");
+      toast.success(`Extracted ${data.files} file(s)`);
+      await fetchFiles(currentPath);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to extract archive");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleOpenFile = async (file: FileItem) => {
     if (file.isDirectory) return;
     try {
@@ -232,9 +252,20 @@ export default function FilesPage() {
             className="hidden" 
             onChange={handleFileUpload} 
           />
+          <input
+            type="file"
+            ref={zipInputRef}
+            className="hidden"
+            accept=".zip,application/zip"
+            onChange={handleFileUpload}
+          />
           <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload className="w-4 h-4 mr-2" />
             Upload File
+          </Button>
+          <Button variant="outline" onClick={() => zipInputRef.current?.click()}>
+            <FileArchive className="w-4 h-4 mr-2" />
+            Upload ZIP
           </Button>
           <Button 
             variant="outline" 
@@ -345,8 +376,18 @@ export default function FilesPage() {
                     <TableCell className="text-muted-foreground text-sm">
                       {format(new Date(file.lastModified), "MMM d, yyyy HH:mm")}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setConfirmDelete(file.path); }}>
+                     <TableCell className="text-right">
+                       {!file.isDirectory && file.name.toLowerCase().endsWith(".zip") && (
+                         <Button
+                           variant="ghost"
+                           size="icon"
+                           title="Extract ZIP"
+                           onClick={(e) => { e.stopPropagation(); handleExtract(file.path); }}
+                         >
+                           <ArchiveRestore className="w-4 h-4" />
+                         </Button>
+                       )}
+                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setConfirmDelete(file.path); }}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </TableCell>
