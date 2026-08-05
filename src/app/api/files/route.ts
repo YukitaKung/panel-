@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { BASE_DIR, resolveSafePath } from "@/lib/safe-path";
+import { syncHtaccessForPath } from "@/lib/system/htaccess";
 
 function toVirtualPath(realPath: string) {
   if (realPath === BASE_DIR) return "/";
@@ -95,6 +96,7 @@ export async function DELETE(request: Request) {
 
     const realTargetPath = await resolveSafePath(targetPath);
     await fs.rm(realTargetPath, { recursive: true, force: true });
+    await syncHtaccessForPath(realTargetPath);
     
     return NextResponse.json({ success: true });
   } catch (error: any) {

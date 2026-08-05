@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import { resolveSafePath } from "@/lib/safe-path";
+import { syncHtaccessForPath } from "@/lib/system/htaccess";
 
 // To limit reading huge files which could crash the server/browser
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -42,7 +43,8 @@ export async function PUT(request: Request) {
 
     const realPath = await resolveSafePath(virtualPath);
     await fs.writeFile(realPath, content, "utf-8");
-    return NextResponse.json({ success: true });
+    const htaccessSynced = await syncHtaccessForPath(realPath);
+    return NextResponse.json({ success: true, htaccessSynced });
   } catch (error: any) {
     console.error("Error writing file:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

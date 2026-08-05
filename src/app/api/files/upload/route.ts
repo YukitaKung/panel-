@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { resolveSafePath } from "@/lib/safe-path";
+import { syncHtaccessForPath } from "@/lib/system/htaccess";
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
 
@@ -37,8 +38,9 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(bytes);
     
     await fs.writeFile(fullRealPath, buffer);
+    const htaccessSynced = await syncHtaccessForPath(fullRealPath);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, htaccessSynced });
   } catch (error: any) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

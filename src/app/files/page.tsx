@@ -134,12 +134,12 @@ export default function FilesPage() {
         body: formData,
       });
 
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Upload failed");
       }
-      
-      toast.success("File uploaded successfully");
+
+      toast.success(data.htaccessSynced ? "File uploaded and Nginx rules applied" : "File uploaded successfully");
       fetchFiles(currentPath);
     } catch (err: any) {
       toast.error(err.message || "Failed to upload file");
