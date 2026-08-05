@@ -220,9 +220,9 @@ export default function DatabasesPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-4 sm:items-center gap-2 sm:gap-4">
               <Label htmlFor="dbpass" className="sm:text-right">Password</Label>
-              <div className="sm:col-span-3 flex space-x-2">
-                <Input id="dbpass" value={newDbPassword} onChange={(e) => setNewDbPassword(e.target.value)} type="text" />
-                <Button variant="outline" type="button" onClick={generatePassword}>Generate</Button>
+              <div className="sm:col-span-3 flex flex-col sm:flex-row gap-2">
+                <Input className="min-w-0 flex-1" id="dbpass" value={newDbPassword} onChange={(e) => setNewDbPassword(e.target.value)} type="text" />
+                <Button className="w-full sm:w-auto" variant="outline" type="button" onClick={generatePassword}>Generate</Button>
               </div>
             </div>
           </div>

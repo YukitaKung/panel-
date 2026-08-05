@@ -241,8 +241,8 @@ export default function FilesPage() {
           <h1 className="text-3xl font-bold tracking-tight">File Manager</h1>
           <p className="text-muted-foreground">Manage and edit your server files directly.</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={() => fetchFiles(currentPath)}>
+        <div className="flex w-full sm:w-auto flex-wrap items-center gap-2">
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => fetchFiles(currentPath)}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
@@ -259,22 +259,22 @@ export default function FilesPage() {
             accept=".zip,application/zip"
             onChange={handleFileUpload}
           />
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload className="w-4 h-4 mr-2" />
             Upload File
           </Button>
-          <Button variant="outline" onClick={() => zipInputRef.current?.click()}>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => zipInputRef.current?.click()}>
             <FileArchive className="w-4 h-4 mr-2" />
             Upload ZIP
           </Button>
-          <Button 
+          <Button className="w-full sm:w-auto"
             variant="outline" 
             onClick={() => { setCreateType("folder"); setIsCreateDialogOpen(true); }}
           >
             <FolderPlus className="w-4 h-4 mr-2" />
             New Folder
           </Button>
-          <Button 
+          <Button className="w-full sm:w-auto"
             onClick={() => { setCreateType("file"); setIsCreateDialogOpen(true); }}
           >
             <FilePlus className="w-4 h-4 mr-2" />

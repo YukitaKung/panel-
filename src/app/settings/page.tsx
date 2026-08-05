@@ -74,26 +74,26 @@ export default function SettingsPage() {
               <CardDescription>Details about the host operating system.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 py-2 border-b">
                 <span className="text-muted-foreground">Hostname</span>
-                <span className="font-medium">{settings?.hostname || "-"}</span>
+                <span className="font-medium break-all sm:text-right">{settings?.hostname || "-"}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 py-2 border-b">
                 <span className="text-muted-foreground">OS Name</span>
-                <span className="font-medium">{settings?.os || "-"}</span>
+                <span className="font-medium break-words sm:text-right">{settings?.os || "-"}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 py-2 border-b">
                 <span className="text-muted-foreground">Kernel Version</span>
-                <span className="font-medium">{settings?.kernel || "-"}</span>
+                <span className="font-medium break-all sm:text-right">{settings?.kernel || "-"}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 py-2 border-b">
                 <span className="text-muted-foreground">Public IP</span>
-                <span className="font-medium">{settings?.ip || "-"}</span>
+                <span className="font-medium break-all sm:text-right">{settings?.ip || "-"}</span>
               </div>
-              <div className="flex justify-between items-center py-2">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-2">
                 <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-4 w-4"/> Timezone</span>
                 <select 
-                  className="bg-muted text-foreground border border-border rounded-none px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-[200px]"
+                  className="bg-muted text-foreground border border-border rounded-none px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-[200px]"
                   value={settings?.timezone || ""}
                   onChange={handleTimezoneChange}
                 >

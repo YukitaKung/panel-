@@ -83,7 +83,7 @@ export function NotificationBell() {
           </Badge>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 rounded-none p-0">
+      <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-80 rounded-none p-0">
         <div className="flex items-center justify-between p-3 border-b">
           <span className="font-semibold text-sm">Notifications</span>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearAll} title="Clear All">

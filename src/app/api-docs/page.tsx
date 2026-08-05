@@ -46,7 +46,7 @@ export default function ApiDocsPage() {
       <Button 
         size="icon" 
         variant="ghost" 
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+        className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
         onClick={() => copyToClipboard(code)}
       >
         <Copy className="h-4 w-4" />

@@ -203,7 +203,7 @@ function StudioContent() {
             {dbName} <span className="text-sm font-normal text-muted-foreground uppercase ml-2">({type})</span>
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full md:w-auto flex-wrap items-center gap-2">
           <input 
             type="file" 
             accept=".sql" 
@@ -211,15 +211,15 @@ function StudioContent() {
             ref={fileInputRef} 
             onChange={handleUploadSql} 
           />
-          <Button variant="secondary" onClick={() => setIsQueryOpen(true)}>
+          <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setIsQueryOpen(true)}>
             <Code2 className="w-4 h-4 mr-2" />
             Run Query
           </Button>
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+          <Button className="w-full sm:w-auto" variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
             {isUploading ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
             Upload .sql
           </Button>
-          <Button variant="outline" onClick={() => router.push("/databases")}>Back</Button>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => router.push("/databases")}>Back</Button>
         </div>
       </div>
 

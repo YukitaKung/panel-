@@ -232,7 +232,7 @@ export default function ApplicationsPage() {
           }}>
           {/* @ts-ignore */}
           <DialogTrigger asChild>
-            <Button>
+             <Button className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               สร้างแอพพลิเคชั่น (Create Application)
             </Button>

@@ -122,7 +122,7 @@ export default function AccessPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger render={
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" /> สร้างบัญชีใหม่ (Create Account)
             </Button>
           } />

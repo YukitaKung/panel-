@@ -83,7 +83,7 @@ export default function LogsPage() {
   ).join("\n");
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col space-y-6">
+    <div className="h-[calc(100dvh-8rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-6 min-h-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Logs</h1>
@@ -94,15 +94,15 @@ export default function LogsPage() {
       <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <CardHeader className="py-3 px-4 border-b bg-muted/30">
-            <div className="flex items-center justify-between">
-              <TabsList>
+            <div className="flex flex-col gap-3">
+              <TabsList className="w-full justify-start overflow-x-auto">
                 <TabsTrigger value="app">Applications</TabsTrigger>
                 <TabsTrigger value="nginx">Nginx</TabsTrigger>
                 <TabsTrigger value="pm2">PM2</TabsTrigger>
                 <TabsTrigger value="system">System</TabsTrigger>
               </TabsList>
-              <div className="flex items-center gap-2">
-                <div className="relative w-64">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
                     type="search" 

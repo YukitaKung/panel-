@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -97,6 +98,7 @@ const items = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [user, setUser] = useState<{ username: string; avatarUrl: string } | null>(null);
 
   useEffect(() => {
@@ -127,7 +129,12 @@ export function AppSidebar() {
                 const isActive = pathname === item.url || (item.url !== "/" && pathname.startsWith(item.url));
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton isActive={isActive} tooltip={item.title} render={<Link href={item.url} />}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      tooltip={item.title}
+                      onClick={() => isMobile && setOpenMobile(false)}
+                      render={<Link href={item.url} />}
+                    >
                       <item.icon />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
