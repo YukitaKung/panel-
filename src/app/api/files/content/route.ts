@@ -1,20 +1,9 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
-import path from "path";
+import { resolveSafePath } from "@/lib/safe-path";
 
 // To limit reading huge files which could crash the server/browser
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const BASE_DIR = process.platform === "win32" ? "C:\\var\\www" : "/var/www";
-
-function getSafePath(requestedPath: string) {
-  const normalized = requestedPath.replace(/^[\/\\]+/, "");
-  const resolved = path.resolve(BASE_DIR, normalized);
-  if (!resolved.startsWith(BASE_DIR)) {
-    throw new Error("Access Denied: Path is outside the allowed directory.");
-  }
-  return resolved;
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const virtualPath = searchParams.get("path");
@@ -24,7 +13,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const realPath = getSafePath(virtualPath);
+    const realPath = await resolveSafePath(virtualPath);
     const stats = await fs.stat(realPath);
     
     if (stats.isDirectory()) {
@@ -51,7 +40,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Missing path or content" }, { status: 400 });
     }
 
-    const realPath = getSafePath(virtualPath);
+    const realPath = await resolveSafePath(virtualPath);
     await fs.writeFile(realPath, content, "utf-8");
     return NextResponse.json({ success: true });
   } catch (error: any) {

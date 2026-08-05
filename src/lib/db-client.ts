@@ -2,7 +2,10 @@ import mysql from "mysql2/promise";
 import { Pool } from "pg";
 
 const MASTER_USER = "hostpanel_admin";
-const MASTER_PASS = process.env.DB_PANEL_PASSWORD || "afc392556efee74182f22e84ad920a11";
+const MASTER_PASS = process.env.DB_PANEL_PASSWORD;
+if (!MASTER_PASS) {
+  throw new Error("DB_PANEL_PASSWORD must be configured");
+}
 
 // Cache for connection pools
 const pgPools: Record<string, Pool> = {};

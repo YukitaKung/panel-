@@ -2,8 +2,14 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 
-const secretKey = process.env.JWT_SECRET || "default_super_secret_key_for_hostpanel_123";
+const secretKey = process.env.JWT_SECRET;
+if (!secretKey || secretKey.length < 32) {
+  throw new Error("JWT_SECRET must be configured with at least 32 characters");
+}
 const key = new TextEncoder().encode(secretKey);
+const cookieSecure = process.env.COOKIE_SECURE
+  ? process.env.COOKIE_SECURE === "true"
+  : process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://") === true;
 
 export async function encrypt(payload: any) {
   return await new SignJWT(payload)
@@ -39,7 +45,7 @@ export async function setSession(userId: string, username?: string, avatarUrl?: 
   cookieStore.set("hostpanel_session", session, {
     expires,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure,
     sameSite: "lax",
     path: "/",
   });

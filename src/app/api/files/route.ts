@@ -1,19 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-
-// The restricted base directory for all web files
-const BASE_DIR = process.platform === "win32" ? "C:\\var\\www" : "/var/www";
-
-function getSafePath(requestedPath: string) {
-  // Remove leading slash so it resolves inside BASE_DIR
-  const normalized = requestedPath.replace(/^[\/\\]+/, "");
-  const resolved = path.resolve(BASE_DIR, normalized);
-  if (!resolved.startsWith(BASE_DIR)) {
-    throw new Error("Access Denied: Path is outside the allowed directory.");
-  }
-  return resolved;
-}
+import { BASE_DIR, resolveSafePath } from "@/lib/safe-path";
 
 function toVirtualPath(realPath: string) {
   if (realPath === BASE_DIR) return "/";
@@ -30,7 +18,7 @@ export async function GET(request: Request) {
   const virtualPath = searchParams.get("path") || "/";
 
   try {
-    const realDirPath = getSafePath(virtualPath);
+    const realDirPath = await resolveSafePath(virtualPath);
     
     // Ensure BASE_DIR exists
     try {
@@ -82,13 +70,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing basePath or name" }, { status: 400 });
     }
 
-    const realBasePath = getSafePath(basePath);
-    const fullRealPath = path.join(realBasePath, name);
-    
-    // Extra security check
-    if (!fullRealPath.startsWith(BASE_DIR)) {
-      throw new Error("Access Denied");
-    }
+    const realBasePath = await resolveSafePath(basePath);
+    const fullRealPath = await resolveSafePath(path.join(realBasePath, name), true);
 
     if (isDirectory) {
       await fs.mkdir(fullRealPath, { recursive: true });
@@ -110,7 +93,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Cannot delete root directory" }, { status: 400 });
     }
 
-    const realTargetPath = getSafePath(targetPath);
+    const realTargetPath = await resolveSafePath(targetPath);
     await fs.rm(realTargetPath, { recursive: true, force: true });
     
     return NextResponse.json({ success: true });

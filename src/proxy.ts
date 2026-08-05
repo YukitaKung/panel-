@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const secretKey = process.env.JWT_SECRET || "default_super_secret_key_for_hostpanel_123";
+const secretKey = process.env.JWT_SECRET;
+if (!secretKey || secretKey.length < 32) {
+  throw new Error("JWT_SECRET must be configured with at least 32 characters");
+}
 const key = new TextEncoder().encode(secretKey);
 
 export async function proxy(request: NextRequest) {

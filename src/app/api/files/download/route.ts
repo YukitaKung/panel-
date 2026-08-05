@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createReadStream, statSync } from 'fs';
 import path from 'path';
-
-const BASE_DIR = process.platform === "win32" ? "C:\\var\\www" : "/var/www";
+import { resolveSafePath } from '@/lib/safe-path';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,17 +11,8 @@ export async function GET(request: Request) {
     return new NextResponse('Missing path', { status: 400 });
   }
 
-  let resolved = filePath;
-  if (!resolved.startsWith(BASE_DIR)) {
-    const normalized = filePath.replace(/^[\/\\]+/, "");
-    resolved = path.resolve(BASE_DIR, normalized);
-  }
-  
-  if (!resolved.startsWith(BASE_DIR)) {
-    return new NextResponse('Access Denied', { status: 403 });
-  }
-  
   try {
+    const resolved = await resolveSafePath(filePath);
     const stat = statSync(resolved);
     const fileStream = createReadStream(resolved);
     

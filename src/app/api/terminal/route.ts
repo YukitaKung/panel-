@@ -8,6 +8,10 @@ const execAsync = promisify(exec);
 
 export async function POST(request: Request) {
   try {
+    if (process.env.ENABLE_SERVER_TERMINAL !== "true") {
+      return NextResponse.json({ error: "Server terminal is disabled" }, { status: 403 });
+    }
+
     const { command, cwd } = await request.json();
 
     if (!command) {

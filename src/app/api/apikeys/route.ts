@@ -5,7 +5,13 @@ import crypto from "crypto";
 export async function GET() {
   try {
     const keys = await db.apiKey.findMany({
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        lastUsedAt: true,
+        createdAt: true,
+      },
     });
     return NextResponse.json(keys);
   } catch (error: any) {
