@@ -64,11 +64,39 @@ export function convertHtaccessToNginx(content: string) {
   const output: string[] = [];
   const pendingConditions: string[] = [];
   const unsupported: string[] = [];
+  let ignoredBlock: "files" | "headers" | null = null;
   const lines = content.split(/\r?\n/);
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
+
+    if (/^<\/(?:Files|FilesMatch)>$/i.test(line)) {
+      ignoredBlock = null;
+      continue;
+    }
+    if (/^<\/IfModule>$/i.test(line)) {
+      ignoredBlock = null;
+      continue;
+    }
+    if (/^<(?:Files|FilesMatch)\b/i.test(line)) {
+      ignoredBlock = "files";
+      continue;
+    }
+    if (/^<IfModule\s+mod_headers\.c>$/i.test(line)) {
+      ignoredBlock = "headers";
+      continue;
+    }
+    if (ignoredBlock === "files") continue;
+    if (ignoredBlock === "headers") {
+      const header = line.match(/^Header\s+set\s+([A-Za-z0-9-]+)\s+"([^"]+)"$/i);
+      if (header && !/[;{}#`]/.test(header[2])) {
+        output.push(`add_header ${header[1]} "${header[2]}" always;`);
+      } else {
+        unsupported.push(line);
+      }
+      continue;
+    }
 
     let match = line.match(/^RewriteEngine\s+(On|Off)$/i);
     if (match) continue;
@@ -112,6 +140,11 @@ export function convertHtaccessToNginx(content: string) {
       continue;
     }
 
+    if (/^RewriteCond\s+%\{REQUEST_FILENAME\}\.php\s+-f$/i.test(line)) {
+      pendingConditions.push("php-file");
+      continue;
+    }
+
     match = line.match(/^RewriteRule\s+(\S+)\s+(\S+)(?:\s+\[([^\]]+)\])?$/i);
     if (match) {
       const { rewriteFlag, caseInsensitive } = parseFlags(match[3] || "L");
@@ -122,9 +155,16 @@ export function convertHtaccessToNginx(content: string) {
         pendingConditions.includes("!-f") &&
         pendingConditions.includes("!-d") &&
         (match[1] === "." || match[1] === "^.*$");
+      const isPhpCleanUrl =
+        pendingConditions.length === 2 &&
+        pendingConditions.includes("!-d") &&
+        pendingConditions.includes("php-file") &&
+        /\$1\.php$/i.test(match[2]);
 
       if (isFrontController && rewriteFlag === "last") {
         output.push(`try_files $uri $uri/ ${replacement}?$query_string;`);
+      } else if (isPhpCleanUrl && rewriteFlag === "last") {
+        output.push("try_files $uri $uri/ $uri.php?$query_string;");
       } else if (pendingConditions.length > 0) {
         unsupported.push(`RewriteRule with unsupported conditions: ${line}`);
       } else {
@@ -173,9 +213,12 @@ export async function syncHtaccessForPath(filePath: string) {
 
   const snippet = convertHtaccessToNginx(await readHtaccess(domain));
   const includeLine = `    include snippets/htaccess-${domain}.conf;`;
-  const updatedConfig = siteConfig.includes(includeLine)
+  const configWithInclude = siteConfig.includes(includeLine)
     ? siteConfig
     : siteConfig.replace(/(location\s+\/\s*\{)/, `$1\n${includeLine}`);
+  const updatedConfig = snippet.includes("try_files")
+    ? configWithInclude.replace(/^\s*try_files \$uri \$uri\/ =404;\s*$/m, "")
+    : configWithInclude;
 
   const previousSnippet = await fs.readFile(snippetPath, "utf8").catch(() => null);
   await fs.writeFile(snippetPath, snippet, { mode: 0o640 });
