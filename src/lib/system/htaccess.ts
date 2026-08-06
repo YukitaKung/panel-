@@ -221,16 +221,26 @@ export async function syncHtaccessForPath(filePath: string) {
     : configWithInclude;
 
   const previousSnippet = await fs.readFile(snippetPath, "utf8").catch(() => null);
-  await fs.writeFile(snippetPath, snippet, { mode: 0o640 });
-  await fs.writeFile(sitePath, updatedConfig, "utf8");
+  const tempSnippetPath = path.join("/tmp", `htaccess-${domain}-${Date.now()}.conf`);
+  const tempSitePath = path.join("/tmp", `nginx-${domain}-${Date.now()}.conf`);
+  await fs.writeFile(tempSnippetPath, snippet, { mode: 0o640 });
+  await fs.writeFile(tempSitePath, updatedConfig, "utf8");
+  await execFileAsync("sudo", ["mv", tempSnippetPath, snippetPath]);
+  await execFileAsync("sudo", ["mv", tempSitePath, sitePath]);
 
   try {
     await execFileAsync("sudo", ["nginx", "-t"]);
     await execFileAsync("sudo", ["systemctl", "reload", "nginx"]);
   } catch (error) {
-    if (previousSnippet === null) await fs.unlink(snippetPath).catch(() => {});
-    else await fs.writeFile(snippetPath, previousSnippet, "utf8");
-    await fs.writeFile(sitePath, siteConfig, "utf8");
+    if (previousSnippet === null) await execFileAsync("sudo", ["rm", "-f", snippetPath]).catch(() => {});
+    else {
+      const rollbackSnippet = path.join("/tmp", `htaccess-rollback-${domain}-${Date.now()}.conf`);
+      await fs.writeFile(rollbackSnippet, previousSnippet, "utf8");
+      await execFileAsync("sudo", ["mv", rollbackSnippet, snippetPath]);
+    }
+    const rollbackSite = path.join("/tmp", `nginx-rollback-${domain}-${Date.now()}.conf`);
+    await fs.writeFile(rollbackSite, siteConfig, "utf8");
+    await execFileAsync("sudo", ["mv", rollbackSite, sitePath]);
     throw error;
   }
 
