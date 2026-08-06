@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import path from "path";
 import { BASE_DIR, resolveSafePath } from "@/lib/safe-path";
 import { syncHtaccessForPath } from "@/lib/system/htaccess";
+
+const execFileAsync = promisify(execFile);
 
 function toVirtualPath(realPath: string) {
   if (realPath === BASE_DIR) return "/";
@@ -99,7 +103,7 @@ export async function DELETE(request: Request) {
 
     for (const targetPath of targetPaths) {
       const realTargetPath = await resolveSafePath(targetPath, true);
-      await fs.rm(realTargetPath, { recursive: true, force: true });
+      await execFileAsync("sudo", ["rm", "-rf", "--", realTargetPath]);
       await syncHtaccessForPath(realTargetPath).catch((error) => {
         if (error?.code !== "ENOENT") throw error;
       });
