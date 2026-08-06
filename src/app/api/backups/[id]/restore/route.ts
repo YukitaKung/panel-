@@ -59,10 +59,14 @@ export async function POST(
           const manifestPath = "/home/hostpanel/migration-staging/manifest.json";
           const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
           if (manifest.mysqlGlobals) {
-            await execAsync(`sudo mysql < ${escapeShellArg(`/${manifest.mysqlGlobals}`)}`);
+            await execAsync(`sudo mysql < ${escapeShellArg(`/${manifest.mysqlGlobals}`)}`).catch((error) => {
+              console.error("MySQL users/grants restore skipped:", error);
+            });
           }
           if (manifest.postgresGlobals) {
-            await execAsync(`sudo -u postgres psql -f ${escapeShellArg(`/${manifest.postgresGlobals}`)}`);
+            await execAsync(`sudo -u postgres psql -f ${escapeShellArg(`/${manifest.postgresGlobals}`)}`).catch((error) => {
+              console.error("PostgreSQL roles restore skipped:", error);
+            });
           }
           for (const dump of manifest.mysql || []) {
             await execAsync(`sudo mysql ${escapeShellArg(dump.database)} < ${escapeShellArg(`/${dump.path}`)}`);
@@ -71,6 +75,9 @@ export async function POST(
             await execAsync(`sudo -u postgres psql -d ${escapeShellArg(dump.database)} -f ${escapeShellArg(`/${dump.path}`)}`);
           }
           await execAsync("sudo systemctl reload nginx").catch(() => {});
+          await execAsync("sudo chown -R hostpanel:hostpanel /home/okkcom269gmailcom/panel-/data").catch(() => {});
+          await execAsync("sudo chown hostpanel:hostpanel /home/okkcom269gmailcom/panel-/dev.db /home/okkcom269gmailcom/panel-/.env").catch(() => {});
+          await execAsync("sudo chmod 600 /home/okkcom269gmailcom/panel-/dev.db /home/okkcom269gmailcom/panel-/.env").catch(() => {});
           await execAsync("pm2 restart hostpanel").catch(() => {});
           await execAsync("sudo rm -rf /home/hostpanel/migration-staging").catch(() => {});
         } else {
