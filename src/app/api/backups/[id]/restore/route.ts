@@ -58,6 +58,12 @@ export async function POST(
           await execAsync(`sudo tar -xzf ${escapeShellArg(backup.path)} -C /`);
           const manifestPath = "/home/hostpanel/migration-staging/manifest.json";
           const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+          if (manifest.mysqlGlobals) {
+            await execAsync(`sudo mysql < ${escapeShellArg(`/${manifest.mysqlGlobals}`)}`);
+          }
+          if (manifest.postgresGlobals) {
+            await execAsync(`sudo -u postgres psql -f ${escapeShellArg(`/${manifest.postgresGlobals}`)}`);
+          }
           for (const dump of manifest.mysql || []) {
             await execAsync(`sudo mysql ${escapeShellArg(dump.database)} < ${escapeShellArg(`/${dump.path}`)}`);
           }

@@ -25,7 +25,27 @@ export async function POST() {
     const mysqlSystem = new Set(["information_schema", "mysql", "performance_schema", "sys"]);
     const mysqlDatabases = mysqlResult.stdout.split(/\r?\n/).map((x) => x.trim()).filter((x) => isValidIdentifier(x) && !mysqlSystem.has(x));
     const postgresDatabases = postgresResult.stdout.split(/\r?\n/).map((x) => x.trim()).filter((x) => isValidIdentifier(x) && x !== "postgres");
-    const manifest = { mysql: [], postgres: [], createdAt: new Date().toISOString() } as { mysql: { database: string; path: string }[]; postgres: { database: string; path: string }[]; createdAt: string };
+    const manifest = { mysql: [], postgres: [], mysqlGlobals: "", postgresGlobals: "", createdAt: new Date().toISOString() } as { mysql: { database: string; path: string }[]; postgres: { database: string; path: string }[]; mysqlGlobals: string; postgresGlobals: string; createdAt: string };
+
+    const mysqlGlobalsPath = path.join(STAGING_DIR, "mysql-globals.sql");
+    const mysqlUsers = (await execAsync("sudo mysql -NBe \"SELECT User,Host FROM mysql.user WHERE User NOT IN ('mysql.infoschema','mysql.session','mysql.sys','debian-sys-maint');\"").catch(() => ({ stdout: "" }))).stdout;
+    let mysqlGlobals = "-- OX Panel MySQL users and grants\n";
+    for (const row of mysqlUsers.split(/\r?\n/).filter(Boolean)) {
+      const [user, host] = row.split("\t");
+      if (!user || !host) continue;
+      const escapedUser = user.replace(/'/g, "''");
+      const escapedHost = host.replace(/'/g, "''");
+      const grants = await execAsync(`sudo mysql -NBe ${shellArg(`SHOW CREATE USER '${escapedUser}'@'${escapedHost}'; SHOW GRANTS FOR '${escapedUser}'@'${escapedHost}';`)}`).catch(() => ({ stdout: "" }));
+      for (const statement of grants.stdout.split(/\r?\n/).map((x) => x.split("\t").pop()).filter(Boolean)) {
+        const sql = statement!.replace(/^CREATE USER /, "CREATE USER IF NOT EXISTS ");
+        mysqlGlobals += `${sql.endsWith(";") ? sql : `${sql};`}\n`;
+      }
+    }
+    await fs.writeFile(mysqlGlobalsPath, mysqlGlobals, { mode: 0o600 });
+    manifest.mysqlGlobals = "home/hostpanel/migration-staging/mysql-globals.sql";
+    const postgresGlobalsPath = path.join(STAGING_DIR, "postgres-globals.sql");
+    await execAsync(`sudo -u postgres pg_dumpall --globals-only > ${shellArg(postgresGlobalsPath)}`);
+    manifest.postgresGlobals = "home/hostpanel/migration-staging/postgres-globals.sql";
 
     for (const database of mysqlDatabases) {
       const output = path.join(STAGING_DIR, "mysql", `${database}.sql`);
