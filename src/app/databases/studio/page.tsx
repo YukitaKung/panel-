@@ -23,7 +23,9 @@ function StudioContent() {
 
   const [tables, setTables] = useState<string[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [data, setData] = useState<{ columns: string[], rows: any[] } | null>(null);
+  const [data, setData] = useState<{ columns: string[], rows: any[], page: number, limit: number, total: number, totalPages: number } | null>(null);
+  const [dataPage, setDataPage] = useState(1);
+  const [dataPageSize, setDataPageSize] = useState(50);
   
   // Edit State
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
@@ -65,22 +67,29 @@ function StudioContent() {
     }
   };
 
-  const handleSelectTable = async (tableName: string | null) => {
+  const handleSelectTable = async (tableName: string | null, page = 1, limit = dataPageSize) => {
     if (!tableName) return;
     setSelectedTable(tableName);
+    setDataPage(page);
     setEditingRowIndex(null);
     setIsLoading(true);
     setError(null);
     setUploadMessage(null);
     try {
-      const res = await fetch(`/api/databases/studio/data?type=${type}&db=${dbName}&table=${tableName}`);
+      const res = await fetch(`/api/databases/studio/data?type=${type}&db=${dbName}&table=${tableName}&page=${page}&limit=${limit}`);
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
-      setData({ columns: d.columns, rows: d.rows });
+      setData(d);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const changeDataPage = (page: number) => {
+    if (selectedTable && data && page >= 1 && page <= data.totalPages) {
+      handleSelectTable(selectedTable, page, dataPageSize);
     }
   };
 
@@ -226,7 +235,7 @@ function StudioContent() {
       <div className="flex flex-col md:flex-row flex-1 gap-4 overflow-hidden">
         {/* Mobile View: Select Dropdown for Tables */}
         <div className="md:hidden">
-          <Select value={selectedTable || ""} onValueChange={handleSelectTable}>
+            <Select value={selectedTable || ""} onValueChange={(value) => handleSelectTable(value)}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a table..." />
             </SelectTrigger>
@@ -339,6 +348,23 @@ function StudioContent() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+
+            {!error && data && data.columns?.length > 0 && (
+              <div className="flex flex-col gap-3 border-t bg-muted/20 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-muted-foreground">{data.total.toLocaleString()} rows · Page {data.page} of {data.totalPages}</span>
+                <div className="flex items-center gap-2">
+                  <select className="h-9 border bg-background px-2" value={dataPageSize} onChange={(e) => { const limit = Number(e.target.value); setDataPageSize(limit); if (selectedTable) handleSelectTable(selectedTable, 1, limit); }}>
+                    <option value="25">25 / page</option>
+                    <option value="50">50 / page</option>
+                    <option value="100">100 / page</option>
+                    <option value="250">250 / page</option>
+                    <option value="500">500 / page</option>
+                  </select>
+                  <Button variant="outline" size="sm" onClick={() => changeDataPage(data.page - 1)} disabled={data.page <= 1}>Previous</Button>
+                  <Button variant="outline" size="sm" onClick={() => changeDataPage(data.page + 1)} disabled={data.page >= data.totalPages}>Next</Button>
+                </div>
               </div>
             )}
 

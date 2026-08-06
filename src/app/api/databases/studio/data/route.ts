@@ -7,6 +7,9 @@ export async function GET(request: Request) {
   const type = searchParams.get("type");
   const dbName = searchParams.get("db");
   const tableName = searchParams.get("table");
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const limit = Math.min(500, Math.max(10, Number(searchParams.get("limit") || "50")));
+  const offset = (page - 1) * limit;
 
   if (!type || !dbName || !tableName || !isValidIdentifier(dbName) || !isValidIdentifier(tableName)) {
     return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
@@ -15,22 +18,27 @@ export async function GET(request: Request) {
   try {
     let rows: any[] = [];
     let columns: string[] = [];
+    let total = 0;
 
     if (type === "mysql") {
       const pool = await getMysqlConnection(dbName);
-      const [res] = await pool.query(`SELECT * FROM \`${tableName}\` LIMIT 50;`);
+      const [countRows] = await pool.query<any[]>(`SELECT COUNT(*) AS total FROM \`${tableName}\`;`);
+      total = Number(countRows[0]?.total || 0);
+      const [res] = await pool.query(`SELECT * FROM \`${tableName}\` LIMIT ${limit} OFFSET ${offset};`);
       rows = res as any[];
       if (rows.length > 0) columns = Object.keys(rows[0]);
     } else if (type === "postgres") {
       const pool = await getPgConnection(dbName);
-      const res = await pool.query(`SELECT * FROM "${tableName}" LIMIT 50;`);
+      const countRes = await pool.query(`SELECT COUNT(*)::bigint AS total FROM "${tableName}";`);
+      total = Number(countRes.rows[0]?.total || 0);
+      const res = await pool.query(`SELECT * FROM "${tableName}" LIMIT ${limit} OFFSET ${offset};`);
       rows = res.rows;
       if (rows.length > 0) columns = Object.keys(rows[0]);
     } else {
       return NextResponse.json({ error: "Unknown db type" }, { status: 400 });
     }
 
-    return NextResponse.json({ rows, columns });
+    return NextResponse.json({ rows, columns, page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) });
   } catch (error: any) {
     console.error("DB Studio Data Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
