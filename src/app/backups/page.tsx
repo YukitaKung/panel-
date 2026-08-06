@@ -73,7 +73,9 @@ export default function BackupsPage() {
       const filesData = await filesResponse.json().catch(() => ({}));
       const databasesData = await databasesResponse.json().catch(() => ({}));
       if (!filesResponse.ok) throw new Error(filesData.error || "Failed to start file backup");
-      if (!databasesResponse.ok) throw new Error(databasesData.error || "Failed to start database backup");
+      if (!databasesResponse.ok || databasesData.success === false) {
+        throw new Error(databasesData.errors?.join("; ") || databasesData.error || "Failed to start database backup");
+      }
 
       toast.dismiss();
       toast.success("Complete backup started");
