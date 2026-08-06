@@ -39,6 +39,10 @@ export default function BackupsPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isDatabaseOpen, setIsDatabaseOpen] = useState(false);
+  const [databaseEngine, setDatabaseEngine] = useState<"mysql" | "postgres">("mysql");
+  const [databaseName, setDatabaseName] = useState("");
+  const [isDatabaseCreating, setIsDatabaseCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadInputKey, setUploadInputKey] = useState(0);
   
@@ -155,6 +159,33 @@ export default function BackupsPage() {
     }
   };
 
+  const handleDatabaseBackup = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!databaseName.trim()) {
+      toast.error("Enter a database name");
+      return;
+    }
+
+    setIsDatabaseCreating(true);
+    try {
+      const res = await fetch("/api/backups/database", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ engine: databaseEngine, database: databaseName.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to create database backup");
+      toast.success("Database backup created");
+      setDatabaseName("");
+      setIsDatabaseOpen(false);
+      fetchBackups();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create database backup");
+    } finally {
+      setIsDatabaseCreating(false);
+    }
+  };
+
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -230,6 +261,37 @@ export default function BackupsPage() {
             <Upload className="h-4 w-4 mr-2" />
             {isUploading ? "Uploading..." : "Upload Backup"}
           </Button>
+          <Dialog open={isDatabaseOpen} onOpenChange={setIsDatabaseOpen}>
+            <DialogTrigger render={<Button variant="outline" />}>
+              <Database className="h-4 w-4 mr-2" />
+              Database Backup
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <form onSubmit={handleDatabaseBackup}>
+                <DialogHeader>
+                  <DialogTitle>Backup Database</DialogTitle>
+                  <DialogDescription>สร้าง SQL dump แล้วบีบอัดเป็นไฟล์สำหรับ restore ภายหลัง</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="backup-engine">Engine</Label>
+                    <select id="backup-engine" className="h-10 border bg-background px-3" value={databaseEngine} onChange={(e) => setDatabaseEngine(e.target.value as "mysql" | "postgres")}>
+                      <option value="mysql">MySQL</option>
+                      <option value="postgres">PostgreSQL</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="backup-database">Database name</Label>
+                    <Input id="backup-database" placeholder="e.g. testpro" value={databaseName} onChange={(e) => setDatabaseName(e.target.value)} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsDatabaseOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={isDatabaseCreating}>{isDatabaseCreating ? "Backing up..." : "Create Backup"}</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger render={<Button />}>
               <Plus className="h-4 w-4 mr-2" />

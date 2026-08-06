@@ -4,6 +4,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
+import { escapeShellArg } from "@/lib/utils";
 
 const execAsync = promisify(exec);
 
@@ -32,14 +33,34 @@ export async function POST(
       return NextResponse.json({ error: "Backup file not found on disk" }, { status: 404 });
     }
 
+    const databaseBackup = backup.type === "MySQL" || backup.type === "PostgreSQL";
+    const databaseMatch = databaseBackup
+      ? backup.name.match(/^db-(mysql|postgres)-([A-Za-z0-9_]+)-[0-9]+\.sql\.gz$/)
+      : null;
+    if (databaseBackup && !databaseMatch) {
+      return NextResponse.json({ error: "Invalid database backup filename" }, { status: 400 });
+    }
+
     // Run restore in background
     Promise.resolve().then(async () => {
+      let tempSqlPath = "";
       try {
-        // Create target directory if it doesn't exist
-        await fs.mkdir(targetPath, { recursive: true }).catch(() => {});
+        if (databaseBackup && databaseMatch) {
+          const database = databaseMatch[2];
+          tempSqlPath = path.join("/tmp", `restore-${id}.sql`);
+          await execAsync(`gzip -dc ${escapeShellArg(backup.path)} > ${escapeShellArg(tempSqlPath)}`);
+          if (backup.type === "MySQL") {
+            await execAsync(`sudo mysql ${escapeShellArg(database)} < ${escapeShellArg(tempSqlPath)}`);
+          } else {
+            await execAsync(`sudo -u postgres psql -d ${escapeShellArg(database)} -f ${escapeShellArg(tempSqlPath)}`);
+          }
+        } else {
+          // Create target directory if it doesn't exist
+          await fs.mkdir(targetPath, { recursive: true }).catch(() => {});
 
-        // Extract tar.gz to root directory (tar naturally strips leading '/' during creation)
-        await execAsync(`sudo tar -xzf ${backup.path} -C /`);
+          // Extract tar.gz to root directory (tar naturally strips leading '/' during creation)
+          await execAsync(`sudo tar -xzf ${escapeShellArg(backup.path)} -C /`);
+        }
 
         // If it's a full system backup or contains config, restart services
         if (backup.type === "Full System" || backup.type === "Advanced") {
@@ -87,6 +108,8 @@ export async function POST(
             type: "error"
           }
         });
+      } finally {
+        if (tempSqlPath) await fs.unlink(tempSqlPath).catch(() => {});
       }
     });
 
