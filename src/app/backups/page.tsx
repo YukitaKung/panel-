@@ -1,457 +1,187 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, Settings, Trash2, HardDrive, Download, Upload, RotateCcw, Database, AppWindow, Server, Check } from "lucide-react";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { HardDrive, Download, RotateCcw, Server, Trash2, Upload } from "lucide-react";
 
+interface BackupRecord {
+  id: string;
+  name: string;
+  type: string;
+  size: string;
+  status: string;
+  path: string;
+  createdAt: string;
+}
 
-const getTypeIcon = (type: string) => {
-  switch (type) {
-    case "Server":
-    case "Full System":
-      return <Server className="h-4 w-4 text-muted-foreground" />;
-    case "Database":
-      return <Database className="h-4 w-4 text-muted-foreground" />;
-    case "Application":
-      return <AppWindow className="h-4 w-4 text-muted-foreground" />;
-    default:
-      return <HardDrive className="h-4 w-4 text-muted-foreground" />;
-  }
-};
+function typeLabel(type: string) {
+  if (type === "MySQL" || type === "PostgreSQL") return `Database · ${type}`;
+  if (type === "Full System") return "Full System";
+  return type || "Backup";
+}
 
 export default function BackupsPage() {
-  const [backups, setBackups] = useState<any[]>([]);
+  const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isDatabaseOpen, setIsDatabaseOpen] = useState(false);
-  const [databaseEngine, setDatabaseEngine] = useState<"mysql" | "postgres">("mysql");
-  const [databaseName, setDatabaseName] = useState("");
-  const [isDatabaseCreating, setIsDatabaseCreating] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadInputKey, setUploadInputKey] = useState(0);
-  
-  // Advanced Form State
-  const [newBackupName, setNewBackupName] = useState("");
-  const [targetType, setTargetType] = useState<"all" | "selected">("all");
-  
-  // Options State
-  const [optWebsiteData, setOptWebsiteData] = useState(true);
-  const [optDatabase, setOptDatabase] = useState(true);
-  const [optPanelConfigs, setOptPanelConfigs] = useState(true);
-  
-  // Fetch lists for "Selected Domains"
-  const [apps, setApps] = useState<any[]>([]);
-  const [subdomains, setSubdomains] = useState<any[]>([]);
-  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
-  
+  const [isWorking, setIsWorking] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [confirmRestore, setConfirmRestore] = useState<any | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState<BackupRecord | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchBackups = async () => {
     try {
       const res = await fetch("/api/backups");
-      if (res.ok) setBackups(await res.json());
-    } catch (e) {
-      console.error(e);
+      if (!res.ok) throw new Error("Failed to load backups");
+      setBackups(await res.json());
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load backups");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchTargets = async () => {
-    try {
-      const [appRes, subRes] = await Promise.all([
-        fetch("/api/applications"),
-        fetch("/api/subdomains")
-      ]);
-      if (appRes.ok) setApps(await appRes.json());
-      if (subRes.ok) setSubdomains(await subRes.json());
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   useEffect(() => {
     fetchBackups();
-    fetchTargets();
     const interval = setInterval(fetchBackups, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const togglePathSelection = (path: string) => {
-    setSelectedPaths(prev => 
-      prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
-    );
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleBackupEverything = async () => {
+    setIsWorking(true);
+    toast.loading("Starting complete backup...");
     try {
-      if (targetType === "selected" && selectedPaths.length === 0 && optWebsiteData) {
-        throw new Error("Please select at least one application or subdomain, or uncheck Website Data.");
-      }
-      
-      toast.loading("Starting backup process...");
-      const res = await fetch("/api/backups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newBackupName || "manual",
-          type: "Advanced",
-          options: {
-            targets: {
-              all: targetType === "all",
-              selected: selectedPaths
+      const [filesResponse, databasesResponse] = await Promise.all([
+        fetch("/api/backups", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "full-system",
+            type: "Advanced",
+            options: {
+              targets: { all: true, selected: [] },
+              opts: { websiteData: true, database: true, panelConfigs: true },
             },
-            opts: {
-              websiteData: optWebsiteData,
-              database: optDatabase,
-              panelConfigs: optPanelConfigs
-            }
-          }
-        })
-      });
-      if (res.ok) {
-        toast.dismiss();
-        toast.success("Backup started in background");
-        setIsCreateOpen(false);
-        setNewBackupName("");
-        fetchBackups();
-      } else {
-        throw new Error("Failed to start backup");
-      }
-    } catch (error: any) {
+          }),
+        }),
+        fetch("/api/backups/database/all", { method: "POST" }),
+      ]);
+
+      const filesData = await filesResponse.json().catch(() => ({}));
+      const databasesData = await databasesResponse.json().catch(() => ({}));
+      if (!filesResponse.ok) throw new Error(filesData.error || "Failed to start file backup");
+      if (!databasesResponse.ok) throw new Error(databasesData.error || "Failed to start database backup");
+
       toast.dismiss();
-      toast.error(error.message);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      toast.loading("Deleting backup...");
-      const res = await fetch(`/api/backups/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        toast.dismiss();
-        toast.success("Backup deleted");
-        fetchBackups();
-      } else {
-        throw new Error("Failed to delete");
-      }
-    } catch (error: any) {
-      toast.dismiss();
-      toast.error(error.message);
-    }
-  };
-
-  const handleDatabaseBackup = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!databaseName.trim()) {
-      toast.error("Enter a database name");
-      return;
-    }
-
-    setIsDatabaseCreating(true);
-    try {
-      const res = await fetch("/api/backups/database", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ engine: databaseEngine, database: databaseName.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to create database backup");
-      toast.success("Database backup created");
-      setDatabaseName("");
-      setIsDatabaseOpen(false);
+      toast.success("Complete backup started");
       fetchBackups();
     } catch (error: any) {
-      toast.error(error.message || "Failed to create database backup");
+      toast.dismiss();
+      toast.error(error.message || "Backup failed");
     } finally {
-      setIsDatabaseCreating(false);
+      setIsWorking(false);
     }
   };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    setIsUploading(true);
+    setIsWorking(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/backups/upload", { method: "POST", body: formData });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to upload backup");
-      toast.success("Backup uploaded successfully");
-      await fetchBackups();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      toast.success("Backup uploaded");
+      fetchBackups();
     } catch (error: any) {
-      toast.error(error.message || "Failed to upload backup");
+      toast.error(error.message || "Upload failed");
     } finally {
-      setIsUploading(false);
-      setUploadInputKey((key) => key + 1);
+      setIsWorking(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  const handleRestore = async (backup: any) => {
+  const handleRestore = async (backup: BackupRecord) => {
+    setIsWorking(true);
     try {
-      toast.loading(`Restoring ${backup.name}...`);
       const res = await fetch(`/api/backups/${backup.id}/restore`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetPath: "/" }) 
+        body: JSON.stringify({ targetPath: "/" }),
       });
-      if (res.ok) {
-        toast.dismiss();
-        toast.success("Restore started in background");
-      } else {
-        throw new Error("Failed to start restore");
-      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Restore failed");
+      toast.success("Restore started in background");
     } catch (error: any) {
-      toast.dismiss();
-      toast.error(error.message);
+      toast.error(error.message || "Restore failed");
+    } finally {
+      setIsWorking(false);
+      setConfirmRestore(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/backups/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      toast.success("Backup deleted");
+      fetchBackups();
+    } catch (error: any) {
+      toast.error(error.message || "Delete failed");
+    } finally {
+      setConfirmDelete(null);
     }
   };
 
   return (
     <div className="space-y-6">
-      <ConfirmDialog 
+      <ConfirmDialog
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
         title="Delete Backup"
-        description="Are you sure you want to delete this backup archive? This action cannot be undone."
+        description="This archive will be permanently deleted."
         onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
       />
-      <ConfirmDialog 
+      <ConfirmDialog
         open={!!confirmRestore}
         onOpenChange={(open) => !open && setConfirmRestore(null)}
         title="Restore Backup"
-        description={`Are you sure you want to restore ${confirmRestore?.name}? This will overwrite existing files across the system depending on what was backed up.`}
+        description={`Restore ${confirmRestore?.name}? Existing data may be overwritten.`}
         onConfirm={() => confirmRestore && handleRestore(confirmRestore)}
       />
-      
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+      <div className="flex flex-col gap-4 rounded-none border bg-card p-6 md:flex-row md:items-center md:justify-between md:p-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Backups</h1>
-          <p className="text-muted-foreground mt-1">Manage full system backups and restore points.</p>
+          <p className="mt-1 text-muted-foreground">One-click backup for websites, Panel data, configs, and databases.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            key={uploadInputKey}
-            type="file"
-            accept=".tar.gz,.tgz,application/gzip"
-            className="hidden"
-            onChange={handleUpload}
-          />
-          <Button variant="outline" onClick={() => document.querySelector<HTMLInputElement>("input[type=file]")?.click()} disabled={isUploading}>
-            <Upload className="h-4 w-4 mr-2" />
-            {isUploading ? "Uploading..." : "Upload Backup"}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button className="w-full sm:w-auto" onClick={handleBackupEverything} disabled={isWorking}>
+            <Server className="mr-2 h-4 w-4" />
+            {isWorking ? "Working..." : "Backup Everything"}
           </Button>
-          <Dialog open={isDatabaseOpen} onOpenChange={setIsDatabaseOpen}>
-            <DialogTrigger render={<Button variant="outline" />}>
-              <Database className="h-4 w-4 mr-2" />
-              Database Backup
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <form onSubmit={handleDatabaseBackup}>
-                <DialogHeader>
-                  <DialogTitle>Backup Database</DialogTitle>
-                  <DialogDescription>สร้าง SQL dump แล้วบีบอัดเป็นไฟล์สำหรับ restore ภายหลัง</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="backup-engine">Engine</Label>
-                    <select id="backup-engine" className="h-10 border bg-background px-3" value={databaseEngine} onChange={(e) => setDatabaseEngine(e.target.value as "mysql" | "postgres")}>
-                      <option value="mysql">MySQL</option>
-                      <option value="postgres">PostgreSQL</option>
-                    </select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="backup-database">Database name</Label>
-                    <Input id="backup-database" placeholder="e.g. testpro" value={databaseName} onChange={(e) => setDatabaseName(e.target.value)} />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDatabaseOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={isDatabaseCreating}>{isDatabaseCreating ? "Backing up..." : "Create Backup"}</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger render={<Button />}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Backup
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl p-0 overflow-hidden sm:max-h-[85vh]">
-              <form onSubmit={handleCreate} className="flex flex-col h-[85vh] sm:h-[85vh] max-h-[800px]">
-                <DialogHeader className="p-6 border-b shrink-0 bg-muted/20">
-                  <DialogTitle className="text-xl">Create Advanced Backup</DialogTitle>
-                  <DialogDescription>
-                    Configure what data you want to include in this backup archive.
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="flex-1 p-6 overflow-y-auto">
-                  <div className="space-y-8">
-                    
-                    {/* Backup Name */}
-                    <div className="space-y-3">
-                      <Label className="text-base font-semibold">Backup Name (Optional)</Label>
-                      <Input 
-                        placeholder="e.g. migration-backup" 
-                        value={newBackupName} 
-                        onChange={e => setNewBackupName(e.target.value)} 
-                        className="max-w-md"
-                      />
-                    </div>
-
-                    {/* Target Selection */}
-                    <div className="space-y-4">
-                      <h3 className="text-base font-semibold border-b pb-2">Target Selection</h3>
-                      <div className="space-y-4">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            name="targetType" 
-                            checked={targetType === "all"} 
-                            onChange={() => setTargetType("all")}
-                            className="w-4 h-4 accent-primary"
-                          />
-                          <span className="font-medium">All Applications & Domains</span>
-                        </label>
-                        
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            name="targetType" 
-                            checked={targetType === "selected"} 
-                            onChange={() => setTargetType("selected")}
-                            className="w-4 h-4 accent-primary"
-                          />
-                          <span className="font-medium">Selected Applications & Domains</span>
-                        </label>
-
-                        {targetType === "selected" && (
-                          <div className="ml-7 border p-4 bg-muted/10 space-y-4 max-h-[250px] overflow-auto">
-                            {apps.length === 0 && subdomains.length === 0 && (
-                              <p className="text-sm text-muted-foreground">No applications or subdomains found.</p>
-                            )}
-                            
-                            {apps.length > 0 && (
-                              <div className="space-y-2">
-                                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Node.js Apps</Label>
-                                {apps.map(app => {
-                                  const path = `/var/www/apps/${app.id}`;
-                                  return (
-                                    <div key={app.id} className="flex items-center gap-2">
-                                      <Checkbox 
-                                        checked={selectedPaths.includes(path)}
-                                        onCheckedChange={() => togglePathSelection(path)}
-                                      />
-                                      <span className="text-sm">{app.name}</span>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-
-                            {subdomains.length > 0 && (
-                              <div className="space-y-2">
-                                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Subdomains / PHP</Label>
-                                {subdomains.map(sub => {
-                                  const path = sub.target.startsWith('/') ? sub.target : `/var/www/domains/${sub.domain}`;
-                                  return (
-                                    <div key={sub.id} className="flex items-center gap-2">
-                                      <Checkbox 
-                                        checked={selectedPaths.includes(path)}
-                                        onCheckedChange={() => togglePathSelection(path)}
-                                      />
-                                      <span className="text-sm">{sub.domain}</span>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Options */}
-                    <div className="space-y-4">
-                      <h3 className="text-base font-semibold border-b pb-2">Options</h3>
-                      <p className="text-sm text-muted-foreground">Select data to backup</p>
-                      
-                      <div className="grid gap-4">
-                        {/* Website Data */}
-                        <label className="flex items-start gap-3 p-4 border bg-card hover:bg-accent/50 cursor-pointer transition-colors">
-                          <Checkbox checked={optWebsiteData} onCheckedChange={(c) => setOptWebsiteData(!!c)} className="mt-1" />
-                          <div>
-                            <p className="font-medium">Website Data</p>
-                            <p className="text-sm text-muted-foreground">Backs up all user files for the selected domains and applications.</p>
-                          </div>
-                        </label>
-
-                        {/* Database */}
-                        <label className="flex items-start gap-3 p-4 border bg-card hover:bg-accent/50 cursor-pointer transition-colors">
-                          <Checkbox checked={optDatabase} onCheckedChange={(c) => setOptDatabase(!!c)} className="mt-1" />
-                          <div>
-                            <p className="font-medium">Panel Database</p>
-                            <p className="text-sm text-muted-foreground">Includes all system settings, users, and application configurations (SQLite dev.db).</p>
-                          </div>
-                        </label>
-
-                        {/* Panel Configs */}
-                        <label className="flex items-start gap-3 p-4 border bg-card hover:bg-accent/50 cursor-pointer transition-colors">
-                          <Checkbox checked={optPanelConfigs} onCheckedChange={(c) => setOptPanelConfigs(!!c)} className="mt-1" />
-                          <div>
-                            <p className="font-medium">Panel Configurations</p>
-                            <p className="text-sm text-muted-foreground">Backs up Nginx vhost configurations and PM2 states.</p>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-
-                <DialogFooter className="p-6 border-t shrink-0 bg-muted/20">
-                  <Button variant="outline" type="button" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                  <Button type="submit">Start Backup</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <input ref={fileInputRef} type="file" accept=".tar.gz,.tgz,application/gzip" className="hidden" onChange={handleUpload} />
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isWorking}>
+            <Upload className="mr-2 h-4 w-4" /> Upload Backup
+          </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Backup Archives</CardTitle>
-          <CardDescription>
-            List of all available backups on this server. Files are stored in /var/www/backups.
-          </CardDescription>
+          <CardDescription>File archives and database dumps stored in /var/www/backups.</CardDescription>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Archive Name</TableHead>
+              <TableRow>
+                <TableHead>Archive</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Date</TableHead>
@@ -462,58 +192,21 @@ export default function BackupsPage() {
               {backups.map((backup) => (
                 <TableRow key={backup.id}>
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <HardDrive className="h-4 w-4 text-muted-foreground" />
-                      {backup.name}
-                    </div>
+                    <div className="flex items-center gap-2"><HardDrive className="h-4 w-4 text-muted-foreground" />{backup.name}</div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      {getTypeIcon(backup.type)}
-                      {backup.type}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {backup.size}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {new Date(backup.createdAt).toLocaleString()}
-                  </TableCell>
+                  <TableCell>{typeLabel(backup.type)}</TableCell>
+                  <TableCell>{backup.size}</TableCell>
+                  <TableCell>{new Date(backup.createdAt).toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
-                        <span className="sr-only">Open menu</span>
-                        <Settings className="h-4 w-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => setConfirmRestore(backup)}>
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Restore
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.open(`/api/files/download?path=${encodeURIComponent(backup.path)}`, '_blank')}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-rose-500 focus:bg-rose-500/10 focus:text-rose-500"
-                          onClick={() => setConfirmDelete(backup.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" title="Restore" onClick={() => setConfirmRestore(backup)} disabled={backup.status !== "Completed"}><RotateCcw className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Download" onClick={() => window.open(`/api/files/download?path=${encodeURIComponent(backup.path)}`, "_blank")}><Download className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive" title="Delete" onClick={() => setConfirmDelete(backup.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
-              {backups.length === 0 && !isLoading && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    No backup archives found.
-                  </TableCell>
-                </TableRow>
-              )}
+              {backups.length === 0 && !isLoading && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No backup archives found.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
