@@ -3,6 +3,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
+import { escapeShellArg } from "@/lib/utils";
 
 const execAsync = promisify(exec);
 const dataFile = path.join(process.cwd(), "data", "subdomains.json");
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   try {
     const { domain } = await request.json();
 
-    if (!domain) {
+     if (!domain || !/^[a-zA-Z0-9.-]+$/.test(domain)) {
       return NextResponse.json({ error: "Missing domain" }, { status: 400 });
     }
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
 
     try {
       // Run Certbot
-      const cmd = `sudo certbot --nginx -d ${domain} --non-interactive --agree-tos --register-unsafely-without-email`;
+       const cmd = `flock -n /tmp/oxpanel-certbot.lock -- sudo certbot --nginx -d ${escapeShellArg(domain)} --non-interactive --agree-tos --register-unsafely-without-email`;
       await execAsync(cmd);
       
       // Update JSON to active
