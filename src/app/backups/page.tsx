@@ -39,6 +39,8 @@ export default function BackupsPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadInputKey, setUploadInputKey] = useState(0);
   
   // Advanced Form State
   const [newBackupName, setNewBackupName] = useState("");
@@ -153,6 +155,27 @@ export default function BackupsPage() {
     }
   };
 
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/backups/upload", { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to upload backup");
+      toast.success("Backup uploaded successfully");
+      await fetchBackups();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to upload backup");
+    } finally {
+      setIsUploading(false);
+      setUploadInputKey((key) => key + 1);
+    }
+  };
+
   const handleRestore = async (backup: any) => {
     try {
       toast.loading(`Restoring ${backup.name}...`);
@@ -196,6 +219,17 @@ export default function BackupsPage() {
           <p className="text-muted-foreground mt-1">Manage full system backups and restore points.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            key={uploadInputKey}
+            type="file"
+            accept=".tar.gz,.tgz,application/gzip"
+            className="hidden"
+            onChange={handleUpload}
+          />
+          <Button variant="outline" onClick={() => document.querySelector<HTMLInputElement>("input[type=file]")?.click()} disabled={isUploading}>
+            <Upload className="h-4 w-4 mr-2" />
+            {isUploading ? "Uploading..." : "Upload Backup"}
+          </Button>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger render={<Button />}>
               <Plus className="h-4 w-4 mr-2" />
