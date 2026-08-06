@@ -89,16 +89,23 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { targetPath } = await request.json();
-    if (!targetPath || targetPath === "/") {
+    const payload = await request.json();
+    const targetPaths: string[] = Array.isArray(payload.targetPaths)
+      ? payload.targetPaths
+      : [payload.targetPath];
+    if (targetPaths.length === 0 || targetPaths.length > 100 || targetPaths.some((targetPath) => !targetPath || targetPath === "/")) {
       return NextResponse.json({ error: "Cannot delete root directory" }, { status: 400 });
     }
 
-    const realTargetPath = await resolveSafePath(targetPath);
-    await fs.rm(realTargetPath, { recursive: true, force: true });
-    await syncHtaccessForPath(realTargetPath);
-    
-    return NextResponse.json({ success: true });
+    for (const targetPath of targetPaths) {
+      const realTargetPath = await resolveSafePath(targetPath, true);
+      await fs.rm(realTargetPath, { recursive: true, force: true });
+      await syncHtaccessForPath(realTargetPath).catch((error) => {
+        if (error?.code !== "ENOENT") throw error;
+      });
+    }
+
+    return NextResponse.json({ success: true, deleted: targetPaths.length });
   } catch (error: any) {
     console.error("Error deleting:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

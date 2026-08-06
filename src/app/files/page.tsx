@@ -44,6 +44,8 @@ export default function FilesPage() {
   const [createType, setCreateType] = useState<"file" | "folder">("file");
   const [newName, setNewName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +61,7 @@ export default function FilesPage() {
       }
       const data = await res.json();
       setFiles(data);
+      setSelectedPaths([]);
       setCurrentPath(path);
     } catch (err: any) {
       setError(err.message);
@@ -116,6 +119,24 @@ export default function FilesPage() {
       fetchFiles(currentPath);
     } catch (err: any) {
       toast.error(err.message);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPaths.length === 0) return;
+    try {
+      const res = await fetch("/api/files", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetPaths: selectedPaths }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to delete files");
+      toast.success(`Deleted ${data.deleted || selectedPaths.length} item(s)`);
+      setConfirmBulkDelete(false);
+      fetchFiles(currentPath);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete files");
     }
   };
 
@@ -236,12 +257,24 @@ export default function FilesPage() {
         description={`Are you sure you want to delete ${confirmDelete}? This action cannot be undone.`}
         onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
       />
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onOpenChange={setConfirmBulkDelete}
+        title="Delete selected files / folders"
+        description={`Are you sure you want to delete ${selectedPaths.length} selected item(s)? This cannot be undone.`}
+        onConfirm={handleBulkDelete}
+      />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">File Manager</h1>
           <p className="text-muted-foreground">Manage and edit your server files directly.</p>
         </div>
         <div className="flex w-full sm:w-auto flex-wrap items-center gap-2">
+          {selectedPaths.length > 0 && (
+            <Button className="w-full sm:w-auto" variant="destructive" onClick={() => setConfirmBulkDelete(true)}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete {selectedPaths.length}
+            </Button>
+          )}
           <Button className="w-full sm:w-auto" variant="outline" onClick={() => fetchFiles(currentPath)}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
@@ -325,7 +358,7 @@ export default function FilesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[400px]">Name</TableHead>
+                     <TableHead className="w-[400px]"><input type="checkbox" aria-label="Select all" checked={files.length > 0 && selectedPaths.length === files.length} onChange={(e) => setSelectedPaths(e.target.checked ? files.map((file) => file.path) : [])} /></TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Last Modified</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -338,7 +371,7 @@ export default function FilesPage() {
                     const parent = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
                     handleNavigate(parent);
                   }}>
-                    <TableCell className="font-medium flex items-center space-x-3">
+                     <TableCell className="font-medium flex items-center space-x-3">
                       <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" />
                       <span>..</span>
                     </TableCell>
@@ -363,6 +396,7 @@ export default function FilesPage() {
                     onClick={() => file.isDirectory ? handleNavigate(file.path) : handleOpenFile(file)}
                   >
                     <TableCell className="font-medium flex items-center space-x-3">
+                       <input type="checkbox" aria-label={`Select ${file.name}`} checked={selectedPaths.includes(file.path)} onChange={(e) => { e.stopPropagation(); setSelectedPaths((current) => e.target.checked ? [...current, file.path] : current.filter((path) => path !== file.path)); }} onClick={(e) => e.stopPropagation()} />
                       {file.isDirectory ? (
                         <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" />
                       ) : (
