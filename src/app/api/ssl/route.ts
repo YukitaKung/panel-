@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
     try {
       // Run Certbot
-       const cmd = `flock -n /tmp/oxpanel-certbot.lock -- sudo certbot --nginx -d ${escapeShellArg(domain)} --non-interactive --agree-tos --register-unsafely-without-email`;
+       const cmd = `flock -n /tmp/oxpanel-certbot.lock sudo certbot --nginx -d ${escapeShellArg(domain)} --non-interactive --agree-tos --register-unsafely-without-email`;
       await execAsync(cmd);
       
       // Update JSON to active
