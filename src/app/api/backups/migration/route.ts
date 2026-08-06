@@ -28,11 +28,11 @@ export async function POST() {
     const manifest = { mysql: [], postgres: [], mysqlGlobals: "", postgresGlobals: "", createdAt: new Date().toISOString() } as { mysql: { database: string; path: string }[]; postgres: { database: string; path: string }[]; mysqlGlobals: string; postgresGlobals: string; createdAt: string };
 
     const mysqlGlobalsPath = path.join(STAGING_DIR, "mysql-globals.sql");
-    const mysqlUsers = (await execAsync("sudo mysql -NBe \"SELECT User,Host FROM mysql.user WHERE User NOT IN ('mysql.infoschema','mysql.session','mysql.sys','debian-sys-maint');\"").catch(() => ({ stdout: "" }))).stdout;
+    const mysqlUsers = (await execAsync("sudo mysql -NBe \"SELECT User,Host,plugin FROM mysql.user WHERE User NOT IN ('root','mysql.infoschema','mysql.session','mysql.sys','debian-sys-maint');\"").catch(() => ({ stdout: "" }))).stdout;
     let mysqlGlobals = "-- OX Panel MySQL users and grants\n";
     for (const row of mysqlUsers.split(/\r?\n/).filter(Boolean)) {
-      const [user, host] = row.split("\t");
-      if (!user || !host) continue;
+      const [user, host, plugin] = row.split("\t");
+      if (!user || !host || plugin === "auth_socket" || plugin === "mysql_no_login") continue;
       const escapedUser = user.replace(/'/g, "''");
       const escapedHost = host.replace(/'/g, "''");
       const grants = await execAsync(`sudo mysql -NBe ${shellArg(`SHOW CREATE USER '${escapedUser}'@'${escapedHost}'; SHOW GRANTS FOR '${escapedUser}'@'${escapedHost}';`)}`).catch(() => ({ stdout: "" }));
