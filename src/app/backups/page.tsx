@@ -54,28 +54,9 @@ export default function BackupsPage() {
     setIsWorking(true);
     toast.loading("Starting complete backup...");
     try {
-      const [filesResponse, databasesResponse] = await Promise.all([
-        fetch("/api/backups", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: "full-system",
-            type: "Advanced",
-            options: {
-              targets: { all: true, selected: [] },
-              opts: { websiteData: true, database: true, panelConfigs: true },
-            },
-          }),
-        }),
-        fetch("/api/backups/database/all", { method: "POST" }),
-      ]);
-
-      const filesData = await filesResponse.json().catch(() => ({}));
-      const databasesData = await databasesResponse.json().catch(() => ({}));
-      if (!filesResponse.ok) throw new Error(filesData.error || "Failed to start file backup");
-      if (!databasesResponse.ok || databasesData.success === false) {
-        throw new Error(databasesData.errors?.join("; ") || databasesData.error || "Failed to start database backup");
-      }
+      const response = await fetch("/api/backups/migration", { method: "POST" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Failed to create migration backup");
 
       toast.dismiss();
       toast.success("Complete backup started");

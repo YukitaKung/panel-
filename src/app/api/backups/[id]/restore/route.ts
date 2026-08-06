@@ -54,6 +54,19 @@ export async function POST(
           } else {
             await execAsync(`sudo -u postgres psql -d ${escapeShellArg(database)} -f ${escapeShellArg(tempSqlPath)}`);
           }
+        } else if (backup.type === "Migration") {
+          await execAsync(`sudo tar -xzf ${escapeShellArg(backup.path)} -C /`);
+          const manifestPath = "/home/hostpanel/migration-staging/manifest.json";
+          const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+          for (const dump of manifest.mysql || []) {
+            await execAsync(`sudo mysql ${escapeShellArg(dump.database)} < ${escapeShellArg(`/${dump.path}`)}`);
+          }
+          for (const dump of manifest.postgres || []) {
+            await execAsync(`sudo -u postgres psql -d ${escapeShellArg(dump.database)} -f ${escapeShellArg(`/${dump.path}`)}`);
+          }
+          await execAsync("sudo systemctl reload nginx").catch(() => {});
+          await execAsync("pm2 restart hostpanel").catch(() => {});
+          await execAsync("sudo rm -rf /home/hostpanel/migration-staging").catch(() => {});
         } else {
           // Create target directory if it doesn't exist
           await fs.mkdir(targetPath, { recursive: true }).catch(() => {});

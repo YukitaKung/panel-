@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     const backup = await db.backup.create({
       data: {
         name: filename,
-        type: "Uploaded",
+        type: originalName.startsWith("migration-") ? "Migration" : "Uploaded",
         size,
         status: "Completed",
         path: fullPath,
