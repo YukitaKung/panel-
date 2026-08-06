@@ -4,6 +4,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
+import { escapeShellArg } from "@/lib/utils";
 
 const execAsync = promisify(exec);
 
@@ -86,14 +87,20 @@ export async function POST(request: Request) {
             throw new Error("No valid paths to backup based on the selected options.");
           }
 
-          const excludeFlags = "--exclude='node_modules' --exclude='.next' --exclude='.cache'";
-          await execAsync(`sudo tar ${excludeFlags} -czf ${fullPath} ${validPaths.join(" ")}`);
+          const tarArgs = [
+            "sudo", "tar", "--exclude=node_modules", "--exclude=.next", "--exclude=.cache",
+            "-czf", fullPath, ...validPaths,
+          ].map(escapeShellArg).join(" ");
+          await execAsync(tarArgs);
           
         } else {
           // Standard backup (legacy/simple dialog if we still support it, or default)
           if (targetPath) {
-             const excludeFlags = "--exclude='node_modules' --exclude='.next' --exclude='.cache'";
-             await execAsync(`sudo tar ${excludeFlags} -czf ${fullPath} ${targetPath}`);
+             const tarArgs = [
+               "sudo", "tar", "--exclude=node_modules", "--exclude=.next", "--exclude=.cache",
+               "-czf", fullPath, targetPath,
+             ].map(escapeShellArg).join(" ");
+             await execAsync(tarArgs);
           } else {
              throw new Error("No target path provided for standard backup");
           }
